@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>2048 Game - Enterprise CI/CD Platform Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #faf8ef;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 80px;
+            font-weight: bold;
+            margin: 0;
+            color: #776e65;
+        }
+        .description {
+            font-size: 18px;
+            color: #776e65;
+            margin: 20px 0;
+        }
+        .game-container {
+            background: #bbada0;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 30px 0;
+        }
+        .message {
+            padding: 40px;
+            background: #edc22e;
+            border-radius: 10px;
+            font-size: 20px;
+            color: #f9f6f2;
+        }
+        .instructions {
+            text-align: left;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .instructions h2 {
+            margin-top: 0;
+            color: #776e65;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>2048</h1>
+        <div class="description">
+            Enterprise CI/CD Platform Demo
+        </div>
+
+        <div class="game-container">
+            <div class="message">
+                🚀 Placeholder for 2048 Game
+                <br><br>
+                <small>Replace www/ contents with actual 2048 game files</small>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h2>Setup Instructions</h2>
+            <p><strong>1. Clone the 2048 game source:</strong></p>
+            <code>git clone https://github.com/gabrielecirulli/2048.git temp-2048</code>
+
+            <p><strong>2. Copy game files:</strong></p>
+            <code>cp -r temp-2048/* 2048/www/</code>
+
+            <p><strong>3. Deploy to production:</strong></p>
+            <code>git add . && git commit -m "Add 2048 game" && git push</code>
+
+            <p><strong>CI/CD Pipeline will:</strong></p>
+            <ul>
+                <li>✅ Build Docker image</li>
+                <li>✅ Push to Amazon ECR</li>
+                <li>✅ Deploy to ECS Fargate</li>
+                <li>✅ Zero-downtime update</li>
+            </ul>
+        </div>
+
+        <div class="instructions">
+            <h2>Enterprise Features</h2>
+            <ul>
+                <li>🔄 Automated CI/CD with GitHub Actions</li>
+                <li>📦 Containerized deployment (Docker + ECS Fargate)</li>
+                <li>🏗️ Infrastructure-as-Code (Terraform)</li>
+                <li>🔒 Security scanning and compliance</li>
+                <li>📊 Complete observability (CloudWatch)</li>
+                <li>💰 Cost-optimized serverless infrastructure</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
