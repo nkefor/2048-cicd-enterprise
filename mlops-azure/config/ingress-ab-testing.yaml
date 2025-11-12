@@ -1,0 +1,178 @@
+---
+# NGINX Ingress Controller for A/B Testing
+# Splits traffic between Model A and Model B based on weight
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ml-model-ingress
+  namespace: mlops
+  annotations:
+    # Use NGINX Ingress Controller
+    kubernetes.io/ingress.class: nginx
+
+    # Enable canary deployment for A/B testing
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "50"
+
+    # Additional NGINX settings
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+
+    # Enable sticky sessions for consistent A/B assignment
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "ab-test-variant"
+    nginx.ingress.kubernetes.io/session-cookie-hash: "sha1"
+
+spec:
+  rules:
+  - host: mlops.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ml-model-service
+            port:
+              number: 80
+
+---
+# Model A Service (Champion) - Primary
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-a-svc
+  namespace: mlops
+  labels:
+    app: ml-model
+    version: a
+    role: champion
+spec:
+  selector:
+    app: ml-model
+    version: a
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP
+  sessionAffinity: ClientIP
+
+---
+# Model B Service (Challenger) - Canary
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-b-svc
+  namespace: mlops
+  labels:
+    app: ml-model
+    version: b
+    role: challenger
+spec:
+  selector:
+    app: ml-model
+    version: b
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP
+  sessionAffinity: ClientIP
+
+---
+# Traffic Split Configuration using NGINX Canary
+# This configures the primary ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: model-a-ingress
+  namespace: mlops
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+  - host: mlops.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: model-a-svc
+            port:
+              number: 80
+
+---
+# Canary ingress for Model B (gets % of traffic)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: model-b-canary-ingress
+  namespace: mlops
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "50"  # 50% traffic to Model B
+spec:
+  rules:
+  - host: mlops.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: model-b-svc
+            port:
+              number: 80
+
+---
+# ConfigMap for traffic split configuration
+# Allows dynamic adjustment of traffic percentages
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ab-test-config
+  namespace: mlops
+data:
+  # Traffic split percentages (must sum to 100)
+  model-a-weight: "50"
+  model-b-weight: "50"
+
+  # A/B test configuration
+  experiment-id: "ab_test_20250112"
+  test-start-date: "2025-01-12T00:00:00Z"
+  test-duration-days: "14"
+
+  # Success criteria
+  min-sample-size: "1000"
+  significance-level: "0.05"
+  minimum-improvement: "5"  # percentage
+
+---
+# Service Monitor for Prometheus metrics
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml-model-metrics
+  namespace: mlops
+  labels:
+    app: ml-model
+spec:
+  selector:
+    app: ml-model
+  ports:
+  - name: metrics
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP

@@ -1,0 +1,407 @@
+name: MLOps CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'mlops-azure/**'
+      - '.github/workflows/mlops-pipeline.yaml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'mlops-azure/**'
+  workflow_dispatch:
+    inputs:
+      deployment_type:
+        description: 'Deployment type (train, deploy, ab-test)'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - train
+          - deploy
+          - ab-test
+          - full-pipeline
+
+env:
+  AZURE_REGION: eastus
+  PYTHON_VERSION: '3.11'
+  TERRAFORM_VERSION: '1.6.0'
+
+jobs:
+  # Train ML Model
+  train-model:
+    name: Train ML Model
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.deployment_type == 'train' || github.event.inputs.deployment_type == 'full-pipeline')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('mlops-azure/models/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          cd mlops-azure/models
+          pip install -r requirements.txt
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Train Model A (Champion)
+        env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_ML_WORKSPACE: ${{ secrets.AZURE_ML_WORKSPACE }}
+          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+        run: |
+          cd mlops-azure/models
+          python train_model.py \
+            --model-name ml-classifier-a \
+            --experiment-name model-training-a \
+            --model-type random_forest \
+            --n-estimators 100 \
+            --max-depth 10 \
+            --output-dir ./outputs-a
+
+      - name: Train Model B (Challenger)
+        env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_ML_WORKSPACE: ${{ secrets.AZURE_ML_WORKSPACE }}
+          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+        run: |
+          cd mlops-azure/models
+          python train_model.py \
+            --model-name ml-classifier-b \
+            --experiment-name model-training-b \
+            --model-type gradient_boosting \
+            --n-estimators 150 \
+            --learning-rate 0.05 \
+            --output-dir ./outputs-b
+
+      - name: Upload Model A Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-a-artifacts
+          path: mlops-azure/models/outputs-a/
+
+      - name: Upload Model B Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-b-artifacts
+          path: mlops-azure/models/outputs-b/
+
+  # Build and Push Container Images
+  build-and-push:
+    name: Build & Push Container Images
+    runs-on: ubuntu-latest
+    needs: [train-model]
+    if: |
+      always() &&
+      (needs.train-model.result == 'success' || needs.train-model.result == 'skipped') &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Model A Artifacts
+        if: needs.train-model.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: model-a-artifacts
+          path: mlops-azure/api/models-a/
+
+      - name: Download Model B Artifacts
+        if: needs.train-model.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: model-b-artifacts
+          path: mlops-azure/api/models-b/
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.ACR_LOGIN_SERVER }}/ml-model
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Model A image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./mlops-azure/api
+          push: true
+          tags: |
+            ${{ secrets.ACR_LOGIN_SERVER }}/ml-model:latest
+            ${{ secrets.ACR_LOGIN_SERVER }}/ml-model:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.ACR_LOGIN_SERVER }}/ml-model:buildcache
+          cache-to: type=registry,ref=${{ secrets.ACR_LOGIN_SERVER }}/ml-model:buildcache,mode=max
+
+      - name: Build and push Model B (Canary) image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./mlops-azure/api
+          push: true
+          tags: |
+            ${{ secrets.ACR_LOGIN_SERVER }}/ml-model:canary
+            ${{ secrets.ACR_LOGIN_SERVER }}/ml-model:canary-${{ github.sha }}
+
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ secrets.ACR_LOGIN_SERVER }}/ml-model:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Deploy to AKS
+  deploy-to-aks:
+    name: Deploy to AKS
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    if: |
+      always() &&
+      needs.build-and-push.result == 'success'
+    environment:
+      name: production
+      url: https://mlops.example.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name ${{ secrets.AKS_CLUSTER_NAME }} \
+            --overwrite-existing
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Update Model A deployment
+        run: |
+          kubectl set image deployment/model-a \
+            model-server=${{ secrets.ACR_LOGIN_SERVER }}/ml-model:${{ github.sha }} \
+            -n mlops
+
+      - name: Wait for Model A rollout
+        run: |
+          kubectl rollout status deployment/model-a -n mlops --timeout=5m
+
+      - name: Update Model B deployment (Canary)
+        run: |
+          kubectl set image deployment/model-b \
+            model-server=${{ secrets.ACR_LOGIN_SERVER }}/ml-model:canary-${{ github.sha }} \
+            -n mlops
+
+      - name: Wait for Model B rollout
+        run: |
+          kubectl rollout status deployment/model-b -n mlops --timeout=5m
+
+      - name: Verify deployments
+        run: |
+          echo "=== Model A Deployment Status ==="
+          kubectl get deployment model-a -n mlops
+          echo ""
+          echo "=== Model B Deployment Status ==="
+          kubectl get deployment model-b -n mlops
+          echo ""
+          echo "=== Service Status ==="
+          kubectl get svc -n mlops
+
+      - name: Run smoke tests
+        run: |
+          # Get the service endpoint
+          ENDPOINT=$(kubectl get svc ml-model-service -n mlops -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+          # Wait for endpoint to be available
+          for i in {1..30}; do
+            if [ -n "$ENDPOINT" ]; then
+              break
+            fi
+            echo "Waiting for load balancer endpoint..."
+            sleep 10
+            ENDPOINT=$(kubectl get svc ml-model-service -n mlops -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          done
+
+          # Test health endpoint
+          curl -f http://${ENDPOINT}/health || exit 1
+
+          # Test prediction endpoint
+          curl -f -X POST http://${ENDPOINT}/predict \
+            -H "Content-Type: application/json" \
+            -d '{"features": [0.5, 0.3, -0.2, 0.8, 0.1]}' || exit 1
+
+          echo "✅ Smoke tests passed!"
+
+  # Run A/B Test Analysis
+  ab-test-analysis:
+    name: A/B Test Analysis
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.deployment_type == 'ab-test' || github.event.inputs.deployment_type == 'full-pipeline')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install azure-cosmos scipy pandas numpy
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Run A/B test analysis
+        env:
+          COSMOS_DB_ENDPOINT: ${{ secrets.COSMOS_DB_ENDPOINT }}
+          COSMOS_DB_KEY: ${{ secrets.COSMOS_DB_KEY }}
+        run: |
+          cd mlops-azure/scripts
+          python ab_test_manager.py \
+            --cosmos-endpoint $COSMOS_DB_ENDPOINT \
+            --cosmos-key $COSMOS_DB_KEY \
+            --experiment-id "ab_test_$(date +%Y%m%d)" \
+            --output ../ab-test-report.json
+
+      - name: Upload A/B test report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ab-test-report
+          path: mlops-azure/ab-test-report.json
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('mlops-azure/ab-test-report.json', 'utf8'));
+
+            const body = `
+            ## A/B Test Analysis Results
+
+            **Experiment ID:** ${report.experiment_id}
+
+            ### Prediction Confidence
+            - **Model A:** ${report.prediction_confidence.model_a.mean.toFixed(4)} (n=${report.prediction_confidence.model_a.count})
+            - **Model B:** ${report.prediction_confidence.model_b.mean.toFixed(4)} (n=${report.prediction_confidence.model_b.count})
+            - **Lift:** ${report.prediction_confidence.lift_percentage.toFixed(2)}%
+            - **P-value:** ${report.prediction_confidence.statistical_test.p_value.toFixed(4)}
+            - **Significant:** ${report.prediction_confidence.statistical_test.significant ? '✅ Yes' : '❌ No'}
+
+            ### Recommendation
+            ${report.prediction_confidence.recommendation}
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  # Promote winning model (manual approval)
+  promote-model:
+    name: Promote Winning Model
+    runs-on: ubuntu-latest
+    needs: [ab-test-analysis]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deployment_type == 'full-pipeline'
+    environment:
+      name: production-promotion
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download A/B test report
+        uses: actions/download-artifact@v4
+        with:
+          name: ab-test-report
+          path: ./
+
+      - name: Determine winner
+        id: winner
+        run: |
+          WINNER=$(python3 -c "
+          import json
+          with open('ab-test-report.json') as f:
+              data = json.load(f)
+          lift = data['prediction_confidence']['lift_percentage']
+          significant = data['prediction_confidence']['statistical_test']['significant']
+          winner = 'B' if lift > 0 and significant else 'A'
+          print(winner)
+          ")
+          echo "winner=$WINNER" >> $GITHUB_OUTPUT
+          echo "Winner: Model $WINNER"
+
+      - name: Update traffic split
+        if: steps.winner.outputs.winner == 'B'
+        run: |
+          # Update ingress to send more traffic to Model B
+          kubectl patch ingress model-b-canary-ingress -n mlops \
+            --type='json' \
+            -p='[{"op": "replace", "path": "/metadata/annotations/nginx.ingress.kubernetes.io~1canary-weight", "value":"100"}]'
+
+          echo "✅ Model B promoted to receive 100% traffic"
+
+      - name: Create deployment tag
+        run: |
+          git tag -a "mlops-v${{ github.run_number }}-model-${{ steps.winner.outputs.winner }}" \
+            -m "Promoted Model ${{ steps.winner.outputs.winner }} based on A/B test results"
+          git push origin "mlops-v${{ github.run_number }}-model-${{ steps.winner.outputs.winner }}"
