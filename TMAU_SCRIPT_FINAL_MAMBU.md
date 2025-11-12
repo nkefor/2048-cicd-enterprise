@@ -13,7 +13,7 @@
 
 *At Tambena, deployment times were slow and security reviews created bottlenecks. I redesigned our CI/CD pipeline using Jenkins and Terraform, embedding automated security scans and compliance verification directly into each deployment. The result—50% faster deployments while strengthening our security posture. The team shifted from manual, high-stress releases to a fully automated process they could trust.*
 
-*I'm drawn to Mambu because you're solving something I care about deeply—financial inclusion. Coming from Cameroon, I've seen firsthand how traditional banking systems exclude billions of people. Your SaaS platform approach to democratizing banking technology isn't just innovative, it's necessary.*
+*I'm drawn to Mambu because you're solving something I care about deeply—financial inclusion. Coming from Cameroon, I've seen firsthand how traditional banking systems exclude billions of people. What excites me is how you've scaled from serving microfinance institutions to now empowering 260+ customers and 114 million end-users globally—from fintechs to top-tier banks. Your composable, cloud-native platform approach to democratizing banking technology isn't just innovative, it's necessary.*
 
 *My healthcare IT background taught me how to navigate strict regulatory environments like HIPAA while maintaining velocity—exactly what fintech demands.*
 
@@ -116,7 +116,7 @@
 
 ### **If They Seem Mission-Focused:**
 **Expand this section:**
-> "Coming from Cameroon, I've seen how lack of access to financial services keeps people trapped in poverty. When I learned about Mambu's work enabling neo-banks and microfinance institutions, it felt like the technical work I do could actually change lives—that's rare and powerful."
+> "Coming from Cameroon, I've seen how lack of access to financial services keeps people trapped in poverty. What draws me to Mambu is your journey—you started with microfinance institutions and scaled to serve 260+ customers and 114 million end-users globally. You're enabling everyone from fintechs and telcos to top-tier banks to build modern banking solutions. The fact that my platform engineering work could help scale infrastructure that democratizes access to banking technology—that's powerful and personal to me."
 
 ### **If Time is Tight (60 seconds):**
 **Cut these sections:**
@@ -157,7 +157,40 @@ After you finish, expect these follow-up questions:
 
 ### **"Why Mambu specifically?"**
 **Response:**
-"Three reasons. First, your SaaS platform approach to banking infrastructure is exactly where I think the industry needs to go—composable, cloud-native, API-first. Second, financial inclusion is personal to me. And third, from researching your tech blog and engineering culture, I can see you're solving complex platform challenges at scale—multi-tenancy, compliance across jurisdictions, high availability—those are problems I've solved and want to keep solving."
+"Three reasons. First, your SaaS platform approach to banking infrastructure is exactly where I think the industry needs to go—composable, cloud-native, API-first. You're providing core banking, lending, deposits, and payment solutions that are agile and designed for rapid deployment. That requires rock-solid platform engineering. Second, financial inclusion is personal to me. The fact that you started with microfinance institutions and now serve 260+ customers globally—from fintechs and telcos to top-tier banks—reaching 114 million end-users, shows you're making real impact at scale. And third, from researching your engineering culture, I can see you're solving complex platform challenges—multi-tenancy, compliance across jurisdictions, high availability—those are problems I've solved and want to keep solving."
+
+---
+
+## **About Mambu - Quick Reference**
+
+**Company Overview:**
+- **Mission:** SaaS cloud banking platform bringing banking and financial services into the digital-first era, making them accessible for everyone
+- **Journey:** Started servicing microfinance institutions, scaled rapidly to enterprise
+- **Scale:** 260+ customers, 114 million end-users globally
+- **Customer Base:** Fintechs, telcos, top-tier banks, microfinance institutions, neo-banks
+
+**Product Offerings:**
+- Core banking solutions
+- Lending platforms
+- Deposit management
+- Payment solutions
+
+**Technology Approach:**
+- Modern, composable cloud platform
+- Agile and customizable
+- Designed for rapid deployment
+- Cloud-native, API-first architecture
+
+**Platform Engineering Challenges (What You'll Work On):**
+- Multi-tenancy at scale
+- Compliance across multiple jurisdictions
+- High availability and reliability
+- Security in a regulated industry
+- Infrastructure automation for rapid deployment
+- Cost optimization at scale
+
+**Why This Matters to You:**
+Your experience with healthcare IT (HIPAA compliance), fintech requirements, AI-powered automation, and cloud platform engineering directly aligns with Mambu's need for secure, compliant, scalable infrastructure that enables rapid innovation.
 
 ---
 
