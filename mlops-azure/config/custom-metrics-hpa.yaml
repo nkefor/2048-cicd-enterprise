@@ -1,0 +1,387 @@
+---
+# Horizontal Pod Autoscaler based on Prediction Volume
+# Uses custom metrics from Application Insights
+# Automatically scales inference endpoints based on request rate
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: model-a-prediction-volume-hpa
+  namespace: mlops
+  annotations:
+    description: "Auto-scales Model A based on prediction request volume"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: model-a
+
+  minReplicas: 2
+  maxReplicas: 20
+
+  metrics:
+  # Scale based on CPU (baseline)
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+
+  # Scale based on memory (baseline)
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+  # Scale based on custom metric: prediction requests per second
+  - type: Pods
+    pods:
+      metric:
+        name: prediction_requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "10"  # Scale when average requests per pod exceeds 10/sec
+
+  # Scale based on Application Insights metric
+  - type: External
+    external:
+      metric:
+        name: azure_application_insights_request_rate
+        selector:
+          matchLabels:
+            model_version: "a"
+      target:
+        type: AverageValue
+        averageValue: "100"  # Requests per minute
+
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300  # Wait 5 minutes before scaling down
+      policies:
+      - type: Percent
+        value: 50  # Scale down max 50% of pods at a time
+        periodSeconds: 60
+      - type: Pods
+        value: 2  # Or max 2 pods at a time
+        periodSeconds: 60
+      selectPolicy: Min  # Use the most conservative policy
+
+    scaleUp:
+      stabilizationWindowSeconds: 0  # Scale up immediately
+      policies:
+      - type: Percent
+        value: 100  # Scale up max 100% of pods at a time
+        periodSeconds: 30
+      - type: Pods
+        value: 4  # Or max 4 pods at a time
+        periodSeconds: 30
+      selectPolicy: Max  # Use the most aggressive policy
+
+---
+# Horizontal Pod Autoscaler for Model B (Challenger)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: model-b-prediction-volume-hpa
+  namespace: mlops
+  annotations:
+    description: "Auto-scales Model B based on prediction request volume"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: model-b
+
+  minReplicas: 1
+  maxReplicas: 10
+
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+  - type: Pods
+    pods:
+      metric:
+        name: prediction_requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "10"
+
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      selectPolicy: Min
+
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+      selectPolicy: Max
+
+---
+# ServiceMonitor for Prometheus metrics collection
+# Collects custom prediction metrics from the model serving API
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-metrics
+  namespace: mlops
+  labels:
+    app: ml-model
+    metrics: "true"
+spec:
+  selector:
+    app: ml-model
+  ports:
+  - name: metrics
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP
+
+---
+# ConfigMap for custom metrics configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-metrics-config
+  namespace: mlops
+data:
+  # Thresholds for auto-scaling
+  scale-up-threshold-rps: "10"  # Requests per second per pod
+  scale-down-threshold-rps: "2"
+
+  # Azure Application Insights configuration
+  app-insights-metric-name: "customMetrics/prediction_latency"
+  app-insights-aggregation: "Average"
+  app-insights-threshold: "2000"  # Latency in milliseconds
+
+  # Scaling behavior
+  scale-up-cooldown: "30"  # seconds
+  scale-down-cooldown: "300"  # seconds
+
+  # Prediction volume monitoring
+  prediction-volume-window: "60"  # seconds
+  prediction-volume-threshold-high: "1000"  # requests per minute
+  prediction-volume-threshold-low: "100"
+
+---
+# Azure Monitor Metrics Adapter Configuration
+# Enables HPA to use Azure Monitor metrics for scaling
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: adapter-config
+  namespace: custom-metrics
+data:
+  config.yaml: |
+    rules:
+    - seriesQuery: 'requests{app="ml-model"}'
+      resources:
+        overrides:
+          namespace:
+            resource: "namespace"
+          pod:
+            resource: "pod"
+      name:
+        matches: "^(.*)$"
+        as: "prediction_requests_per_second"
+      metricsQuery: 'sum(rate(<<.Series>>{<<.LabelMatchers>>}[1m])) by (<<.GroupBy>>)'
+
+    - seriesQuery: 'azure_application_insights_request_rate{model_version="a"}'
+      resources:
+        template: <<.Resource>>
+      name:
+        matches: "^(.*)$"
+        as: "azure_application_insights_request_rate"
+      metricsQuery: 'avg(<<.Series>>{<<.LabelMatchers>>})'
+
+---
+# PodMonitor for Prometheus Operator
+# Scrapes metrics from model serving pods
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: ml-model-monitor
+  namespace: mlops
+spec:
+  selector:
+    matchLabels:
+      app: ml-model
+  podMetricsEndpoints:
+  - port: http
+    interval: 30s
+    path: /metrics
+    scheme: http
+
+---
+# Custom Metric Provider for Prediction Volume
+# Exposes prediction volume as a Kubernetes custom metric
+apiVersion: v1
+kind: Service
+metadata:
+  name: custom-metrics-apiserver
+  namespace: custom-metrics
+spec:
+  ports:
+  - port: 443
+    targetPort: 6443
+  selector:
+    app: custom-metrics-apiserver
+
+---
+# KEDA ScaledObject (Alternative auto-scaling solution)
+# Uses KEDA for advanced auto-scaling based on external metrics
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: model-a-scaledobject
+  namespace: mlops
+spec:
+  scaleTargetRef:
+    name: model-a
+  minReplicaCount: 2
+  maxReplicaCount: 20
+  pollingInterval: 30
+  cooldownPeriod: 300
+
+  triggers:
+  # Scale based on Azure Application Insights metrics
+  - type: azure-app-insights
+    metadata:
+      metricId: "customMetrics/prediction_requests"
+      targetValue: "100"
+      metricAggregationType: "Total"
+      metricAggregationInterval: "0:1:0"
+      applicationInsightsId: "${APP_INSIGHTS_ID}"
+    authenticationRef:
+      name: azure-app-insights-auth
+
+  # Scale based on Prometheus metrics
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus-server.monitoring:9090
+      metricName: prediction_requests_total
+      threshold: '50'
+      query: rate(prediction_requests_total{model_version="a"}[1m])
+
+  # Scale based on Azure Monitor
+  - type: azure-monitor
+    metadata:
+      resourceURI: "/subscriptions/{subscription}/resourceGroups/{rg}/providers/Microsoft.ContainerService/managedClusters/{cluster}"
+      metricName: "requests"
+      targetValue: "100"
+
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+          - type: Percent
+            value: 50
+            periodSeconds: 60
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 30
+
+---
+# TriggerAuthentication for KEDA Azure integration
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: azure-app-insights-auth
+  namespace: mlops
+spec:
+  podIdentity:
+    provider: azure-workload
+  secretTargetRef:
+  - parameter: applicationInsightsId
+    name: model-secrets
+    key: app-insights-key
+
+---
+# Documentation ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: autoscaling-docs
+  namespace: mlops
+data:
+  README.md: |
+    # Auto-Scaling Configuration for ML Models
+
+    This directory contains configurations for auto-scaling ML model deployments
+    based on prediction volume and custom metrics.
+
+    ## Features
+
+    1. **HPA based on CPU/Memory**: Baseline auto-scaling
+    2. **HPA based on Prediction Volume**: Scales based on requests per second
+    3. **HPA based on Application Insights**: Uses Azure metrics
+    4. **KEDA Integration**: Advanced auto-scaling with external metrics
+
+    ## Metrics
+
+    - `prediction_requests_per_second`: Request rate per pod
+    - `azure_application_insights_request_rate`: Request rate from App Insights
+    - `prediction_latency`: Average prediction latency
+
+    ## Scaling Behavior
+
+    ### Scale Up
+    - Triggers: High request volume, high CPU/memory, high latency
+    - Cooldown: 0 seconds (immediate)
+    - Max increase: 100% or 4 pods per 30 seconds
+
+    ### Scale Down
+    - Triggers: Low request volume, low CPU/memory
+    - Cooldown: 300 seconds (5 minutes)
+    - Max decrease: 50% or 2 pods per 60 seconds
+
+    ## Usage
+
+    ```bash
+    # Apply custom metrics HPA
+    kubectl apply -f custom-metrics-hpa.yaml
+
+    # Check HPA status
+    kubectl get hpa -n mlops
+
+    # View scaling events
+    kubectl describe hpa model-a-prediction-volume-hpa -n mlops
+
+    # Monitor metrics
+    kubectl get --raw /apis/custom.metrics.k8s.io/v1beta1/namespaces/mlops/pods/*/prediction_requests_per_second
+    ```
+
+    ## Configuration
+
+    Adjust scaling thresholds in the ConfigMap:
+    - `scale-up-threshold-rps`: Requests per second to trigger scale up
+    - `scale-down-threshold-rps`: Requests per second to trigger scale down
+    - `scale-up-cooldown`: Cooldown period after scaling up
+    - `scale-down-cooldown`: Cooldown period after scaling down

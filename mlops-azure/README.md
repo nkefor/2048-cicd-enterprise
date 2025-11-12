@@ -4,14 +4,24 @@
 
 ## 🚀 Features
 
-- ✅ **Automated Model Training**: Azure ML integration with MLflow tracking
+### Core Capabilities
+- ✅ **MLflow Integration**: Integrated MLflow for experiment tracking and model registry with Azure ML
+- ✅ **Distributed Training**: Azure ML compute clusters for scalable model training
+- ✅ **Hyperparameter Tuning**: Automated hyperparameter optimization with Azure ML HyperDrive
+- ✅ **Auto-scaling on Prediction Volume**: Dynamic scaling based on request rate and custom metrics
 - ✅ **Continuous Deployment**: Automated model deployment to AKS with zero downtime
 - ✅ **A/B Testing**: Built-in traffic splitting and statistical analysis
 - ✅ **Real-time Monitoring**: Azure Monitor dashboards with custom metrics
-- ✅ **Auto-scaling**: Kubernetes HPA for dynamic resource allocation
 - ✅ **Model Registry**: Centralized model versioning and metadata tracking
 - ✅ **Infrastructure as Code**: Complete Terraform automation
 - ✅ **CI/CD Pipeline**: GitHub Actions workflow for end-to-end automation
+
+### Key Differentiators
+- 🎯 **Intelligent Auto-Scaling**: Scales inference endpoints based on prediction volume, not just CPU/memory
+- 🔬 **Experiment Tracking**: Full MLflow integration with Azure ML for tracking all training runs
+- ⚡ **Distributed Training**: Leverage multiple compute nodes for faster model training
+- 🎛️ **Automated Hyperparameter Tuning**: Find optimal model parameters automatically
+- 📊 **Production Model Registry**: Track model lineage, versions, and performance metrics
 
 ## 📊 Architecture
 
@@ -134,6 +144,156 @@
 - **Custom dashboards**: KQL queries for business metrics
 - **Alerting**: Proactive notifications for anomalies
 - **Cost tracking**: Resource utilization monitoring
+
+## 🎯 Key Features Deep Dive
+
+### MLflow Integration for Experiment Tracking
+
+This platform integrates MLflow with Azure ML for comprehensive experiment tracking and model registry:
+
+#### Features:
+- **Experiment Tracking**: All training runs logged with parameters, metrics, and artifacts
+- **Model Registry**: Centralized model versioning with lineage tracking
+- **Auto-Promotion**: Models automatically promoted to Production stage based on performance
+- **Model Cards**: Automatic generation of model documentation
+- **Artifact Management**: Model binaries, scalers, and metadata stored securely
+
+#### Example Usage:
+
+```python
+# Training with MLflow tracking
+python train_model.py \
+  --model-name ml-classifier \
+  --experiment-name production-training \
+  --model-type random_forest \
+  --n-estimators 100 \
+  --auto-promote \
+  --promotion-threshold 0.90
+
+# View experiments in Azure ML Studio
+# All metrics, parameters, and artifacts automatically tracked
+```
+
+#### Benefits:
+- ✅ **Full Reproducibility**: Every training run is tracked with exact parameters
+- ✅ **Model Lineage**: Track which data and code produced each model
+- ✅ **Comparison**: Compare multiple models side-by-side
+- ✅ **Governance**: Audit trail for regulatory compliance
+
+### Distributed Training with Azure ML
+
+Scale your model training across multiple compute nodes for faster iteration:
+
+#### Features:
+- **Compute Clusters**: Auto-scaling Azure ML compute clusters
+- **Distributed Execution**: Parallelize training across multiple nodes
+- **Cost Optimization**: Scale to zero when not in use
+- **GPU Support**: Optional GPU acceleration for deep learning
+
+#### Example Usage:
+
+```python
+# Run distributed training
+python distributed_training.py \
+  --subscription-id YOUR_SUB_ID \
+  --resource-group mlops-platform-rg \
+  --workspace-name mlops-platform-workspace \
+  --mode distributed-training \
+  --instance-count 4 \
+  --vm-size STANDARD_DS3_V2
+
+# Monitor in Azure ML Studio
+# Training distributed across 4 compute nodes
+```
+
+#### Benefits:
+- ✅ **Faster Training**: 4x faster with 4 nodes
+- ✅ **Cost Effective**: Pay only for compute time used
+- ✅ **Scalable**: Scale from 1 to 100+ nodes
+- ✅ **Managed**: Azure handles infrastructure
+
+### Hyperparameter Tuning with Azure ML HyperDrive
+
+Automatically find optimal model hyperparameters:
+
+#### Features:
+- **Automated Search**: Random search, grid search, Bayesian optimization
+- **Early Termination**: Bandit policy stops underperforming runs
+- **Parallel Execution**: Run multiple trials concurrently
+- **Best Model Selection**: Automatically selects best performing model
+
+#### Example Usage:
+
+```python
+# Run hyperparameter tuning
+python distributed_training.py \
+  --subscription-id YOUR_SUB_ID \
+  --resource-group mlops-platform-rg \
+  --workspace-name mlops-platform-workspace \
+  --mode hyperparameter-tuning \
+  --max-trials 20 \
+  --concurrent-trials 4
+
+# Searches hyperparameter space:
+# - n_estimators: [50, 100, 150, 200]
+# - max_depth: [5, 10, 15, 20]
+# - min_samples_split: [2, 5, 10]
+# - learning_rate: [0.01 to 0.3]
+```
+
+#### Benefits:
+- ✅ **Better Models**: Find optimal hyperparameters automatically
+- ✅ **Time Savings**: Parallel search saves hours of manual tuning
+- ✅ **Reproducible**: Track all trials in MLflow
+- ✅ **Cost Efficient**: Early termination reduces compute costs
+
+### Auto-Scaling Based on Prediction Volume
+
+Dynamically scale inference endpoints based on actual prediction load:
+
+#### Features:
+- **Custom Metrics**: Scale based on requests per second, not just CPU/memory
+- **Application Insights Integration**: Use real-time metrics from Azure Monitor
+- **Intelligent Scaling**: Different policies for scale-up and scale-down
+- **KEDA Support**: Advanced auto-scaling with external metrics
+
+#### Scaling Metrics:
+- `prediction_requests_per_second`: Request rate per pod
+- `azure_application_insights_request_rate`: Request rate from App Insights
+- `prediction_latency`: Average prediction latency
+
+#### Example Configuration:
+
+```yaml
+# HPA based on prediction volume
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: model-a-prediction-volume-hpa
+spec:
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+  - type: Pods
+    pods:
+      metric:
+        name: prediction_requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "10"  # Scale when >10 RPS per pod
+```
+
+#### Scaling Behavior:
+- **Scale Up**: Immediate (0 sec cooldown) when request volume increases
+- **Scale Down**: Conservative (5 min cooldown) to avoid thrashing
+- **Max Scale Up**: 100% or 4 pods per 30 seconds
+- **Max Scale Down**: 50% or 2 pods per 60 seconds
+
+#### Benefits:
+- ✅ **Cost Optimization**: Scale down to min replicas during low traffic
+- ✅ **Performance**: Scale up immediately during traffic spikes
+- ✅ **Predictable**: Based on actual prediction load, not proxy metrics
+- ✅ **Flexible**: Support for multiple scaling metrics
 
 ## 🚀 Quick Start
 
