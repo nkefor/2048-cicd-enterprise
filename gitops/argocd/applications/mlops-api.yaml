@@ -1,0 +1,26 @@
+# ArgoCD Application for MLOps API
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mlops-api
+  namespace: argocd
+spec:
+  project: enterprise-platforms
+  source:
+    repoURL: https://github.com/nkefor/2048-cicd-enterprise.git
+    targetRevision: HEAD
+    path: gitops/manifests/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mlops
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/replicas  # Ignore HPA-managed replicas

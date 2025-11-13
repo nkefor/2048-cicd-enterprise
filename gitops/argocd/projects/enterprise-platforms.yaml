@@ -1,0 +1,70 @@
+# ArgoCD Project for Enterprise Platforms
+# Groups related applications and enforces policies
+
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: enterprise-platforms
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Enterprise Platform Suite - CI/CD, MLOps, Healthcare AI
+
+  # Source repositories
+  sourceRepos:
+  - 'https://github.com/nkefor/2048-cicd-enterprise.git'
+  - '*'  # Allow all repos (restrict in production)
+
+  # Destination clusters and namespaces
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  - namespace: '*'
+    server: '*'  # Allow all clusters (restrict in production)
+
+  # Cluster resource whitelist (what can be created)
+  clusterResourceWhitelist:
+  - group: '*'
+    kind: '*'
+
+  # Namespace resource whitelist
+  namespaceResourceWhitelist:
+  - group: '*'
+    kind: '*'
+
+  # Roles for RBAC
+  roles:
+  - name: developer
+    description: Developers can sync applications
+    policies:
+    - p, proj:enterprise-platforms:developer, applications, sync, enterprise-platforms/*, allow
+    - p, proj:enterprise-platforms:developer, applications, get, enterprise-platforms/*, allow
+    groups:
+    - developers
+
+  - name: admin
+    description: Admins have full access
+    policies:
+    - p, proj:enterprise-platforms:admin, applications, *, enterprise-platforms/*, allow
+    groups:
+    - admins
+
+  # Sync windows (when deployments are allowed)
+  syncWindows:
+  - kind: allow
+    schedule: '0 9-17 * * MON-FRI'  # Allow Mon-Fri 9 AM - 5 PM
+    duration: 8h
+    applications:
+    - '*-dev'
+    - '*-staging'
+
+  - kind: deny
+    schedule: '0 0-8,18-23 * * *'  # Deny outside business hours for prod
+    duration: 10h
+    applications:
+    - '*-prod'
+
+  # Orphaned resources (cleanup resources deleted from Git)
+  orphanedResources:
+    warn: true
