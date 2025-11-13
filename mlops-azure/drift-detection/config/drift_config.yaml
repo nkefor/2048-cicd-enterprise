@@ -1,0 +1,69 @@
+# Drift-Aware Retraining Pipeline Configuration
+
+# Time windows for drift detection
+baseline_days: 30  # Number of days for baseline period
+current_days: 7    # Number of days for current period comparison
+
+# Embedding drift thresholds
+embedding_thresholds:
+  distance_threshold: 0.15      # Max centroid distance (Euclidean/Cosine)
+  silhouette_threshold: 0.2     # Min silhouette score degradation
+  variance_threshold: 0.3       # Max variance increase (30%)
+  psi_threshold: 0.2            # Population Stability Index threshold
+
+# Behavior metrics thresholds
+behavior_thresholds:
+  refusal_rate_threshold: 0.10  # 10% - Max acceptable refusal rate
+  toxicity_rate_threshold: 0.05 # 5% - Max acceptable toxicity rate
+  error_rate_threshold: 0.10    # 10% - Max acceptable error rate
+  response_length_change: 0.5   # 50% - Max response length anomaly
+
+# Accuracy thresholds
+accuracy_thresholds:
+  accuracy_threshold: 0.05      # 5% - Max acceptable accuracy drop
+  feedback_threshold: 0.30      # 30% - Max acceptable feedback drop
+  task_success_threshold: 0.05  # 5% - Max task success rate drop
+
+# Action configuration
+actions:
+  dry_run: false                        # Set true to simulate without executing
+  require_approval: false               # Set true for manual approval (prod)
+  reindex_batch_size: 1000             # Documents per reindex batch
+  finetune_min_samples: 100            # Min samples for fine-tuning
+  finetune_max_samples: 5000           # Max samples for fine-tuning
+  finetune_model: "gpt-3.5-turbo-0613" # Base model for fine-tuning
+
+# Monitoring
+prometheus_port: 8000           # Port for Prometheus metrics
+log_level: "INFO"               # Logging level: DEBUG, INFO, WARNING, ERROR
+save_reports: true              # Save drift reports to files
+report_directory: "./reports"   # Directory for saving reports
+
+# Database
+database:
+  # Set via environment variable: SUPABASE_DB_URL
+  connection_pool_size: 10
+  connection_timeout: 30
+
+# Cost tracking
+cost_tracking:
+  enabled: true
+  openai_embedding_cost_per_1k: 0.0001  # text-embedding-ada-002
+  openai_gpt35_cost_per_1k: 0.002       # GPT-3.5-turbo
+  openai_finetune_cost_per_1k: 0.008    # Fine-tuning training cost
+
+# Alerting (optional - configure with Grafana/Alertmanager)
+alerting:
+  enabled: true
+  webhook_url: ""  # Slack/Teams webhook
+  email: "mlops-alerts@example.com"
+  alert_on_high_drift: true
+  alert_on_retraining: true
+  alert_on_failures: true
+
+# Advanced settings
+advanced:
+  pca_components: 50                    # PCA dimensions for clustering
+  kmeans_clusters: 5                    # Number of clusters for analysis
+  min_samples_for_detection: 100       # Minimum samples required
+  embedding_dimension: 1536             # OpenAI ada-002 dimension

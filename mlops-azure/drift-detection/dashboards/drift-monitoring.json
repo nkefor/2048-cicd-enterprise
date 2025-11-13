@@ -1,0 +1,205 @@
+{
+  "dashboard": {
+    "title": "Drift-Aware Retraining Monitor",
+    "tags": ["mlops", "drift-detection", "ai"],
+    "timezone": "browser",
+    "schemaVersion": 36,
+    "panels": [
+      {
+        "id": 1,
+        "title": "Overall Drift Score",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "drift_overall_score",
+            "legendFormat": "Overall Drift Score",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {"fillOpacity": 10},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.5},
+                {"color": "red", "value": 0.8}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Model Accuracy Over Time",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "model_accuracy",
+            "legendFormat": "Model Accuracy",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "min": 0,
+            "max": 1,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 0.7},
+                {"color": "green", "value": 0.85}
+              ]
+            }
+          }
+        },
+        "options": {
+          "annotations": [
+            {
+              "name": "Retraining Events",
+              "datasource": "Prometheus",
+              "expr": "changes(retrain_events_total[1m]) > 0",
+              "iconColor": "blue",
+              "textFormat": "🔄 Model Retrained"
+            }
+          ]
+        }
+      },
+      {
+        "id": 3,
+        "title": "Drift Breakdown",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "drift_embedding_score",
+            "legendFormat": "Embedding Drift",
+            "refId": "A"
+          },
+          {
+            "expr": "drift_behavior_score",
+            "legendFormat": "Behavior Drift",
+            "refId": "B"
+          },
+          {
+            "expr": "drift_accuracy_score",
+            "legendFormat": "Accuracy Drift",
+            "refId": "C"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Refusal & Toxicity Rates",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "model_refusal_rate",
+            "legendFormat": "Refusal Rate",
+            "refId": "A"
+          },
+          {
+            "expr": "model_toxicity_rate",
+            "legendFormat": "Toxicity Rate",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.05},
+                {"color": "red", "value": 0.10}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "API Cost Tracking",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(api_cost_usd_total[1h]) * 3600 * 24",
+            "legendFormat": "Daily API Cost (USD)",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "custom": {
+              "fillOpacity": 20
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Retraining Events",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "retrain_events_total",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value",
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 5},
+                {"color": "red", "value": 10}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Reindex Events",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 16},
+        "targets": [
+          {
+            "expr": "reindex_events_total",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value"
+        }
+      }
+    ],
+    "refresh": "30s",
+    "time": {
+      "from": "now-7d",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["10s", "30s", "1m", "5m", "15m"]
+    }
+  }
+}
