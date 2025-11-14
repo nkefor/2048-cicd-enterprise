@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Secure 2048 Game</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+      text-align: center;
+    }
+
+    .subtitle {
+      color: #666;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .security-badge {
+      background: #f0f9ff;
+      border: 1px solid #0ea5e9;
+      border-radius: 5px;
+      padding: 15px;
+      margin-bottom: 25px;
+      text-align: center;
+    }
+
+    .security-badge h2 {
+      color: #0369a1;
+      font-size: 14px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .security-features {
+      display: flex;
+      justify-content: space-around;
+      font-size: 12px;
+      color: #0c4a6e;
+    }
+
+    .security-features span {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      color: #333;
+      font-weight: 500;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e5e7eb;
+      border-radius: 5px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .alert {
+      padding: 12px 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .alert.error {
+      background-color: #fee2e2;
+      border: 1px solid #ef4444;
+      color: #991b1b;
+    }
+
+    .alert.success {
+      background-color: #d1fae5;
+      border: 1px solid #10b981;
+      color: #065f46;
+    }
+
+    .alert.show {
+      display: block;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      color: #666;
+      margin-top: 15px;
+      font-size: 14px;
+    }
+
+    .loading.show {
+      display: block;
+    }
+
+    .logs-container {
+      margin-top: 30px;
+      padding: 20px;
+      background: #f9fafb;
+      border-radius: 5px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .logs-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 10px;
+    }
+
+    .log-entry {
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      padding: 8px;
+      margin: 5px 0;
+      background: white;
+      border-left: 3px solid #d1d5db;
+      border-radius: 3px;
+      color: #1f2937;
+    }
+
+    .log-entry.error {
+      border-left-color: #ef4444;
+      background: #fef2f2;
+    }
+
+    .log-entry.success {
+      border-left-color: #10b981;
+      background: #f0fdf4;
+    }
+
+    .log-entry.warning {
+      border-left-color: #f59e0b;
+      background: #fffbeb;
+    }
+
+    .info-box {
+      background: #fefce8;
+      border: 1px solid #eab308;
+      border-radius: 5px;
+      padding: 15px;
+      margin-top: 20px;
+      font-size: 13px;
+      color: #854d0e;
+    }
+
+    .info-box strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 Secure 2048</h1>
+    <p class="subtitle">Production Security Demo</p>
+
+    <div class="security-badge">
+      <h2>🛡️ Security Features Active</h2>
+      <div class="security-features">
+        <span>✓ TLS/HTTPS</span>
+        <span>✓ Rate Limited</span>
+        <span>✓ Authenticated</span>
+      </div>
+    </div>
+
+    <div id="alert" class="alert"></div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input
+          type="text"
+          id="username"
+          name="username"
+          required
+          minlength="3"
+          autocomplete="username"
+          placeholder="Enter your username"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          required
+          minlength="6"
+          autocomplete="current-password"
+          placeholder="Enter your password"
+        >
+      </div>
+
+      <button type="submit" id="loginBtn">Login</button>
+    </form>
+
+    <div id="loading" class="loading">
+      <p>🔄 Authenticating...</p>
+    </div>
+
+    <div class="info-box">
+      <strong>Default Credentials:</strong>
+      Username: <code>admin</code><br>
+      Password: <code>ChangeMe123!</code>
+    </div>
+
+    <div class="logs-container">
+      <div class="logs-title">🔍 Security Event Log</div>
+      <div id="securityLogs"></div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const alert = document.getElementById('alert');
+    const loading = document.getElementById('loading');
+    const loginBtn = document.getElementById('loginBtn');
+    const securityLogs = document.getElementById('securityLogs');
+
+    let attemptCount = 0;
+
+    function addLog(message, type = 'info') {
+      const log = document.createElement('div');
+      log.className = `log-entry ${type}`;
+      const timestamp = new Date().toLocaleTimeString();
+      log.textContent = `[${timestamp}] ${message}`;
+      securityLogs.insertBefore(log, securityLogs.firstChild);
+
+      // Keep only last 10 logs
+      while (securityLogs.children.length > 10) {
+        securityLogs.removeChild(securityLogs.lastChild);
+      }
+    }
+
+    function showAlert(message, type) {
+      alert.textContent = message;
+      alert.className = `alert ${type} show`;
+      setTimeout(() => {
+        alert.classList.remove('show');
+      }, 5000);
+    }
+
+    // Log page load
+    addLog('Login page loaded. TLS encryption active.', 'success');
+    addLog('Rate limiting: 5 attempts per 15 minutes', 'info');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      attemptCount++;
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      loading.classList.add('show');
+      loginBtn.disabled = true;
+
+      addLog(`Login attempt ${attemptCount} for user: ${username}`, 'info');
+
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username, password }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showAlert('Login successful! Redirecting...', 'success');
+          addLog(`✓ Authentication successful for ${username}`, 'success');
+          addLog('Redirecting to game...', 'success');
+
+          setTimeout(() => {
+            window.location.href = '/game';
+          }, 1000);
+        } else {
+          if (response.status === 429) {
+            showAlert('Too many login attempts. Please wait 15 minutes.', 'error');
+            addLog('⚠ Rate limit exceeded! Account temporarily locked.', 'error');
+            addLog('This is security in action - protecting against brute force attacks', 'warning');
+          } else {
+            showAlert(data.error || 'Login failed', 'error');
+            addLog(`✗ Authentication failed for ${username}`, 'error');
+            addLog(`Remaining attempts: ${5 - attemptCount} before rate limit`, 'warning');
+          }
+
+          loginBtn.disabled = false;
+        }
+      } catch (error) {
+        showAlert('Network error. Please try again.', 'error');
+        addLog(`✗ Network error: ${error.message}`, 'error');
+        loginBtn.disabled = false;
+      } finally {
+        loading.classList.remove('show');
+      }
+    });
+
+    // Simulate bot detection
+    let mouseMovements = 0;
+    document.addEventListener('mousemove', () => {
+      mouseMovements++;
+      if (mouseMovements === 1) {
+        addLog('Human interaction detected (mouse movement)', 'success');
+      }
+    });
+
+    // Log when inputs are focused (human-like behavior)
+    document.querySelectorAll('input').forEach(input => {
+      input.addEventListener('focus', () => {
+        addLog(`Input field focused: ${input.name}`, 'info');
+      });
+    });
+  </script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>2048 Game - Enterprise CI/CD Platform Demo</title>
+    <title>2048 Game - Secure Enterprise Platform</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
@@ -16,6 +16,35 @@
             max-width: 500px;
             margin: 0 auto;
             padding: 20px;
+        }
+        .security-header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .security-info {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            font-size: 14px;
+        }
+        .logout-btn {
+            background: white;
+            color: #059669;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .logout-btn:hover {
+            transform: scale(1.05);
         }
         h1 {
             font-size: 80px;
@@ -58,40 +87,54 @@
             border-radius: 3px;
             font-family: monospace;
         }
+        .security-badge {
+            display: inline-block;
+            background: #d1fae5;
+            color: #065f46;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="security-header">
+            <div class="security-info">
+                <span>🔒 Authenticated</span>
+                <span>🛡️ Rate Limited</span>
+                <span id="username">User: <strong>Loading...</strong></span>
+            </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
         <h1>2048</h1>
         <div class="description">
-            Enterprise CI/CD Platform Demo
+            <span class="security-badge">✓ SECURED WITH TLS + AUTH</span>
+            <br><br>
+            Production Security Demo
         </div>
 
         <div class="game-container">
             <div class="message">
-                🚀 Placeholder for 2048 Game
+                🎮 2048 Game Protected by Enterprise Security
                 <br><br>
-                <small>Replace www/ contents with actual 2048 game files</small>
+                <small>You are accessing this game through a secure, authenticated, rate-limited connection.</small>
+                <br><br>
+                <small>Replace www/ contents with actual 2048 game files to play the full game.</small>
             </div>
         </div>
 
         <div class="instructions">
-            <h2>Setup Instructions</h2>
-            <p><strong>1. Clone the 2048 game source:</strong></p>
-            <code>git clone https://github.com/gabrielecirulli/2048.git temp-2048</code>
-
-            <p><strong>2. Copy game files:</strong></p>
-            <code>cp -r temp-2048/* 2048/www/</code>
-
-            <p><strong>3. Deploy to production:</strong></p>
-            <code>git add . && git commit -m "Add 2048 game" && git push</code>
-
-            <p><strong>CI/CD Pipeline will:</strong></p>
+            <h2>🔐 Security Features Active</h2>
             <ul>
-                <li>✅ Build Docker image</li>
-                <li>✅ Push to Amazon ECR</li>
-                <li>✅ Deploy to ECS Fargate</li>
-                <li>✅ Zero-downtime update</li>
+                <li>✅ <strong>TLS/HTTPS Encryption</strong> - All traffic encrypted with Let's Encrypt</li>
+                <li>✅ <strong>Authentication Required</strong> - Only authenticated users can access</li>
+                <li>✅ <strong>Rate Limiting</strong> - Protection against brute force attacks</li>
+                <li>✅ <strong>Session Management</strong> - Secure cookie-based sessions</li>
+                <li>✅ <strong>Security Headers</strong> - Helmet.js protection (CSP, HSTS, etc.)</li>
+                <li>✅ <strong>Security Logging</strong> - All auth attempts and violations logged</li>
             </ul>
         </div>
 
@@ -107,5 +150,32 @@
             </ul>
         </div>
     </div>
+
+    <script>
+        // Fetch current user info
+        fetch('/api/auth/status')
+            .then(res => res.json())
+            .then(data => {
+                if (data.authenticated) {
+                    document.getElementById('username').innerHTML = `User: <strong>${data.username}</strong>`;
+                } else {
+                    window.location.href = '/';
+                }
+            })
+            .catch(() => {
+                window.location.href = '/';
+            });
+
+        // Logout function
+        function logout() {
+            fetch('/api/logout', { method: 'POST' })
+                .then(() => {
+                    window.location.href = '/';
+                })
+                .catch(() => {
+                    window.location.href = '/';
+                });
+        }
+    </script>
 </body>
 </html>

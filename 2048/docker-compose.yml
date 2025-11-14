@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: secure-2048
+    ports:
+      - "3000:80"
+      - "443:443"
+    environment:
+      - NODE_ENV=development
+      - PORT=80
+      - HOST=0.0.0.0
+      - SESSION_SECRET=dev-secret-change-in-production
+      - ADMIN_PASSWORD=ChangeMe123!
+      - ENABLE_HTTPS=false
+      # For HTTPS, set these:
+      # - ENABLE_HTTPS=true
+      # - DOMAIN=your-domain.com
+      # - EMAIL=your-email@example.com
+    volumes:
+      - ./logs:/app/logs
+      - ./greenlock.d:/app/greenlock.d
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Redis for session storage in production
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: secure-2048-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   restart: unless-stopped
+
+# volumes:
+#   redis-data:
