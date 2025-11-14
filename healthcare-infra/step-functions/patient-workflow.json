@@ -1,0 +1,288 @@
+{
+  "Comment": "Healthcare Patient Workflow: Intake → Lab → Billing",
+  "StartAt": "PatientIntake",
+  "States": {
+    "PatientIntake": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${PatientIntakeLambdaArn}",
+        "Payload": {
+          "patientId.$": "$.patientId",
+          "demographics.$": "$.demographics",
+          "medicalHistory.$": "$.medicalHistory",
+          "insuranceInfo.$": "$.insuranceInfo"
+        }
+      },
+      "ResultPath": "$.intakeResult",
+      "Next": "ValidatePatientData",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "NotifyIntakeFailure"
+        }
+      ]
+    },
+    "ValidatePatientData": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${DataValidationLambdaArn}",
+        "Payload": {
+          "intakeData.$": "$.intakeResult.Payload"
+        }
+      },
+      "ResultPath": "$.validationResult",
+      "Next": "CheckValidation"
+    },
+    "CheckValidation": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.validationResult.Payload.isValid",
+          "BooleanEquals": true,
+          "Next": "ExtractMedicalEntities"
+        }
+      ],
+      "Default": "NotifyValidationFailure"
+    },
+    "ExtractMedicalEntities": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${ComprehendMedicalLambdaArn}",
+        "Payload": {
+          "patientData.$": "$.intakeResult.Payload",
+          "textToAnalyze.$": "$.intakeResult.Payload.clinicalNotes"
+        }
+      },
+      "ResultPath": "$.medicalEntities",
+      "Next": "CheckLabOrdersNeeded",
+      "Comment": "Use Amazon Comprehend Medical for AI-driven data extraction"
+    },
+    "CheckLabOrdersNeeded": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.medicalEntities.Payload.labOrdersRequired",
+          "BooleanEquals": true,
+          "Next": "ProcessLabOrders"
+        }
+      ],
+      "Default": "SkipLabProcessing"
+    },
+    "ProcessLabOrders": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "CreateLabOrder",
+          "States": {
+            "CreateLabOrder": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${LabOrderLambdaArn}",
+                "Payload": {
+                  "patientId.$": "$.patientId",
+                  "orderedTests.$": "$.medicalEntities.Payload.recommendedTests",
+                  "priority.$": "$.intakeResult.Payload.priority"
+                }
+              },
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "NotifyLaboratory",
+          "States": {
+            "NotifyLaboratory": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::sns:publish",
+              "Parameters": {
+                "TopicArn": "${LabNotificationTopicArn}",
+                "Message": {
+                  "patientId.$": "$.patientId",
+                  "tests.$": "$.medicalEntities.Payload.recommendedTests",
+                  "timestamp.$": "$$.State.EnteredTime"
+                }
+              },
+              "End": true
+            }
+          }
+        }
+      ],
+      "ResultPath": "$.labProcessingResult",
+      "Next": "WaitForLabResults"
+    },
+    "WaitForLabResults": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:getItem.waitForTaskToken",
+      "Parameters": {
+        "TableName": "${LabResultsTableName}",
+        "Key": {
+          "patientId": {
+            "S.$": "$.patientId"
+          }
+        },
+        "TaskToken.$": "$$.Task.Token"
+      },
+      "ResultPath": "$.labResults",
+      "Next": "ProcessLabResults",
+      "TimeoutSeconds": 86400,
+      "Comment": "Wait up to 24 hours for lab results"
+    },
+    "ProcessLabResults": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${LabResultsProcessorLambdaArn}",
+        "Payload": {
+          "patientId.$": "$.patientId",
+          "labResults.$": "$.labResults"
+        }
+      },
+      "ResultPath": "$.processedLabResults",
+      "Next": "GenerateBilling"
+    },
+    "SkipLabProcessing": {
+      "Type": "Pass",
+      "Result": {
+        "skipped": true,
+        "reason": "No lab orders required"
+      },
+      "ResultPath": "$.labProcessingResult",
+      "Next": "GenerateBilling"
+    },
+    "GenerateBilling": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "CalculateCharges",
+          "States": {
+            "CalculateCharges": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${BillingCalculatorLambdaArn}",
+                "Payload": {
+                  "patientId.$": "$.patientId",
+                  "services.$": "$.intakeResult.Payload.services",
+                  "labTests.$": "$.labProcessingResult",
+                  "insuranceInfo.$": "$.intakeResult.Payload.insuranceInfo"
+                }
+              },
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "VerifyInsurance",
+          "States": {
+            "VerifyInsurance": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${InsuranceVerificationLambdaArn}",
+                "Payload": {
+                  "patientId.$": "$.patientId",
+                  "insuranceInfo.$": "$.intakeResult.Payload.insuranceInfo"
+                }
+              },
+              "End": true
+            }
+          }
+        }
+      ],
+      "ResultPath": "$.billingResult",
+      "Next": "CreateBillingRecord"
+    },
+    "CreateBillingRecord": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:putItem",
+      "Parameters": {
+        "TableName": "${BillingTableName}",
+        "Item": {
+          "patientId": {
+            "S.$": "$.patientId"
+          },
+          "charges": {
+            "N.$": "States.Format('{}', $.billingResult[0].Payload.totalCharges)"
+          },
+          "insuranceVerified": {
+            "BOOL.$": "$.billingResult[1].Payload.verified"
+          },
+          "timestamp": {
+            "S.$": "$$.State.EnteredTime"
+          },
+          "status": {
+            "S": "PENDING"
+          }
+        }
+      },
+      "ResultPath": "$.billingRecordResult",
+      "Next": "NotifyBillingComplete"
+    },
+    "NotifyBillingComplete": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${BillingNotificationTopicArn}",
+        "Subject": "Patient Billing Complete",
+        "Message": {
+          "patientId.$": "$.patientId",
+          "totalCharges.$": "$.billingResult[0].Payload.totalCharges",
+          "status": "COMPLETE",
+          "timestamp.$": "$$.State.EnteredTime"
+        }
+      },
+      "Next": "WorkflowComplete"
+    },
+    "WorkflowComplete": {
+      "Type": "Succeed",
+      "Comment": "Patient workflow completed successfully"
+    },
+    "NotifyIntakeFailure": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${ErrorNotificationTopicArn}",
+        "Subject": "Patient Intake Failed",
+        "Message": {
+          "error.$": "$.error",
+          "patientId.$": "$.patientId"
+        }
+      },
+      "Next": "WorkflowFailed"
+    },
+    "NotifyValidationFailure": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${ErrorNotificationTopicArn}",
+        "Subject": "Patient Data Validation Failed",
+        "Message": {
+          "validationErrors.$": "$.validationResult.Payload.errors",
+          "patientId.$": "$.patientId"
+        }
+      },
+      "Next": "WorkflowFailed"
+    },
+    "WorkflowFailed": {
+      "Type": "Fail",
+      "Error": "WorkflowExecutionFailed",
+      "Cause": "Patient workflow failed - check notifications for details"
+    }
+  }
+}
