@@ -1,0 +1,162 @@
+# Prometheus Alert Rules for Healthcare Pipeline
+
+groups:
+  - name: healthcare_pipeline_alerts
+    interval: 30s
+    rules:
+      # Critical Alerts
+      - alert: HighErrorRate
+        expr: rate(healthcare_errors_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: pipeline
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      - alert: PHIBreach
+        expr: healthcare_phi_exposure_total > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: security
+        annotations:
+          summary: "PHI breach detected!"
+          description: "{{ $value }} PHI exposure incidents detected"
+
+      - alert: ComplianceScoreLow
+        expr: healthcare_compliance_score < 95
+        for: 10m
+        labels:
+          severity: critical
+          component: compliance
+        annotations:
+          summary: "Compliance score below threshold"
+          description: "Compliance score is {{ $value }}% (threshold: 95%)"
+
+      - alert: LambdaThrottling
+        expr: aws_lambda_throttles_sum > 0
+        for: 5m
+        labels:
+          severity: critical
+          component: lambda
+        annotations:
+          summary: "Lambda function throttling"
+          description: "{{ $labels.function_name }} is being throttled"
+
+      # High Priority Alerts
+      - alert: HighQuarantineRate
+        expr: (healthcare_quarantined_total / healthcare_documents_processed_total) > 0.3
+        for: 10m
+        labels:
+          severity: high
+          component: pipeline
+        annotations:
+          summary: "High quarantine rate"
+          description: "Quarantine rate is {{ $value | humanizePercentage }} (threshold: 30%)"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, healthcare_processing_duration_seconds_bucket) > 5
+        for: 10m
+        labels:
+          severity: high
+          component: performance
+        annotations:
+          summary: "High processing latency"
+          description: "p95 latency is {{ $value }}s (threshold: 5s)"
+
+      - alert: APIHighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: high
+          component: api
+        annotations:
+          summary: "API high error rate"
+          description: "API error rate is {{ $value | humanizePercentage }}"
+
+      - alert: GuardDutyFindings
+        expr: aws_guardduty_findings_high_severity > 0
+        for: 1m
+        labels:
+          severity: high
+          component: security
+        annotations:
+          summary: "GuardDuty high-severity findings"
+          description: "{{ $value }} high-severity findings detected"
+
+      # Medium Priority Alerts
+      - alert: HighCostPerDocument
+        expr: healthcare_cost_per_document > 0.05
+        for: 30m
+        labels:
+          severity: medium
+          component: cost
+        annotations:
+          summary: "Cost per document exceeds threshold"
+          description: "Cost per document is ${{ $value }} (threshold: $0.05)"
+
+      - alert: LowThroughput
+        expr: rate(healthcare_documents_processed_total[10m]) < 10
+        for: 30m
+        labels:
+          severity: medium
+          component: performance
+        annotations:
+          summary: "Low document processing throughput"
+          description: "Throughput is {{ $value }} docs/min (threshold: 10 docs/min)"
+
+      - alert: DiskSpaceWarning
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 20
+        for: 10m
+        labels:
+          severity: medium
+          component: infrastructure
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is {{ $value }}% available"
+
+      # Informational Alerts
+      - alert: BudgetThresholdWarning
+        expr: aws_billing_estimated_charges > 1000
+        for: 1h
+        labels:
+          severity: info
+          component: cost
+        annotations:
+          summary: "Monthly budget threshold warning"
+          description: "Current monthly charges: ${{ $value }}"
+
+  - name: compliance_monitoring
+    interval: 60s
+    rules:
+      - alert: EncryptionDisabled
+        expr: healthcare_encryption_enabled == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: security
+        annotations:
+          summary: "Encryption disabled on resource"
+          description: "{{ $labels.resource_type }} {{ $labels.resource_id }} has encryption disabled"
+
+      - alert: AuditLogGap
+        expr: time() - healthcare_last_audit_log_timestamp > 3600
+        for: 5m
+        labels:
+          severity: high
+          component: compliance
+        annotations:
+          summary: "Audit log gap detected"
+          description: "No audit logs received for over 1 hour"
+
+      - alert: BackupFailure
+        expr: healthcare_backup_success == 0
+        for: 1m
+        labels:
+          severity: high
+          component: reliability
+        annotations:
+          summary: "Backup failure detected"
+          description: "Backup failed for {{ $labels.resource }}"

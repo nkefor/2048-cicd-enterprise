@@ -1,0 +1,162 @@
+{
+  "dashboard": {
+    "title": "Healthcare Pipeline - Health & Performance",
+    "tags": ["healthcare", "pipeline", "monitoring"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Documents Processed per Minute",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(healthcare_documents_processed_total[5m])*60",
+            "legendFormat": "Documents/min"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "PII Detection Rate",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(healthcare_pii_detected_total) / sum(healthcare_documents_processed_total) * 100",
+            "legendFormat": "PII Detection %"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Processing Latency (p95)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, healthcare_processing_duration_seconds_bucket)",
+            "legendFormat": "p95 latency"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Error Rate by Stage",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "sum by (stage) (rate(healthcare_errors_total[5m]))",
+            "legendFormat": "{{stage}}"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Quarantine Rate",
+        "type": "gauge",
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "sum(healthcare_quarantined_total) / sum(healthcare_documents_processed_total) * 100",
+            "legendFormat": "Quarantine %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 10, "color": "yellow"},
+                {"value": 20, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Lambda Concurrent Executions",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 8},
+        "targets": [
+          {
+            "expr": "aws_lambda_concurrent_executions_maximum{function_name=\"healthcare-pii-detection\"}",
+            "legendFormat": "Concurrent Executions"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Cost per Document",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "sum(healthcare_total_cost) / sum(healthcare_documents_processed_total)",
+            "legendFormat": "Cost/Document"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD"
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Compliance Score",
+        "type": "gauge",
+        "gridPos": {"h": 6, "w": 6, "x": 6, "y": 16},
+        "targets": [
+          {
+            "expr": "healthcare_compliance_score",
+            "legendFormat": "Compliance %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 90, "color": "yellow"},
+                {"value": 95, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Top PHI Entity Types",
+        "type": "piechart",
+        "gridPos": {"h": 6, "w": 6, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "sum by (entity_type) (healthcare_phi_entities_total)",
+            "legendFormat": "{{entity_type}}"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Recent Alerts",
+        "type": "table",
+        "gridPos": {"h": 6, "w": 6, "x": 18, "y": 16},
+        "targets": [
+          {
+            "expr": "ALERTS{severity=\"critical\"}",
+            "format": "table"
+          }
+        ]
+      }
+    ],
+    "refresh": "30s",
+    "time": {"from": "now-1h", "to": "now"}
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "documentId": "CN-2024-001234",
+  "documentType": "clinical_note",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "text": "Patient is a 45-year-old male presenting with hypertension and type 2 diabetes mellitus. Blood pressure reading: 145/95 mmHg. HbA1c: 7.8%. Current medications include Metformin 1000mg twice daily and Lisinopril 10mg once daily. Patient reports good medication adherence. Recommending lifestyle modifications and follow-up in 3 months. No adverse drug reactions reported.",
+  "metadata": {
+    "facility": "General Hospital",
+    "department": "Internal Medicine",
+    "encounterType": "Outpatient Visit",
+    "noteType": "Progress Note"
+  },
+  "structuredData": {
+    "conditions": [
+      {
+        "code": "I10",
+        "display": "Essential (primary) hypertension",
+        "system": "ICD-10"
+      },
+      {
+        "code": "E11.9",
+        "display": "Type 2 diabetes mellitus without complications",
+        "system": "ICD-10"
+      }
+    ],
+    "medications": [
+      {
+        "code": "6809",
+        "display": "Metformin",
+        "dosage": "1000mg",
+        "frequency": "twice daily",
+        "system": "RxNorm"
+      },
+      {
+        "code": "104383",
+        "display": "Lisinopril",
+        "dosage": "10mg",
+        "frequency": "once daily",
+        "system": "RxNorm"
+      }
+    ],
+    "vitalSigns": [
+      {
+        "type": "blood_pressure",
+        "value": "145/95",
+        "unit": "mmHg"
+      },
+      {
+        "type": "hba1c",
+        "value": "7.8",
+        "unit": "%"
+      }
+    ]
+  }
+}

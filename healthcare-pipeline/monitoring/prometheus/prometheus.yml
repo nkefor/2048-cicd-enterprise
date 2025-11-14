@@ -1,0 +1,108 @@
+# Prometheus Configuration for Healthcare Pipeline
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  external_labels:
+    cluster: 'healthcare-pipeline'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Load rules
+rule_files:
+  - '/etc/prometheus/rules/*.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # AWS CloudWatch Exporter
+  - job_name: 'cloudwatch'
+    static_configs:
+      - targets: ['cloudwatch-exporter:9106']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: cloudwatch-exporter:9106
+
+  # ECS Service Discovery
+  - job_name: 'ecs-tasks'
+    ec2_sd_configs:
+      - region: us-east-1
+        port: 9090
+    relabel_configs:
+      - source_labels: [__meta_ec2_tag_ecs_cluster]
+        target_label: cluster
+      - source_labels: [__meta_ec2_tag_ecs_service]
+        target_label: service
+
+  # Lambda Metrics (via CloudWatch)
+  - job_name: 'lambda'
+    static_configs:
+      - targets: ['cloudwatch-exporter:9106']
+    params:
+      region: ['us-east-1']
+      namespace: ['AWS/Lambda']
+    metric_relabel_configs:
+      - source_labels: [FunctionName]
+        target_label: function
+
+  # FHIR API Gateway
+  - job_name: 'fhir-api'
+    dns_sd_configs:
+      - names:
+          - 'fhir-gateway.healthcare-pipeline.internal'
+        type: 'A'
+        port: 8000
+    metrics_path: '/metrics'
+
+  # Consent Service
+  - job_name: 'consent-service'
+    dns_sd_configs:
+      - names:
+          - 'consent-api.healthcare-pipeline.internal'
+        type: 'A'
+        port: 8000
+    metrics_path: '/metrics'
+
+  # Node Exporter (if using EC2)
+  - job_name: 'node'
+    ec2_sd_configs:
+      - region: us-east-1
+        port: 9100
+
+  # Blackbox Exporter (for endpoint monitoring)
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://api.healthcare-pipeline.example.com/health
+          - https://fhir.healthcare-pipeline.example.com/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+# Remote write to long-term storage (optional)
+remote_write:
+  - url: "https://prometheus-remote-write.example.com/api/v1/write"
+    basic_auth:
+      username: admin
+      password_file: /etc/prometheus/remote_write_password
