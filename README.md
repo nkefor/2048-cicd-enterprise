@@ -1,6 +1,25 @@
-# Enterprise CI/CD Pipeline for Containerized Web Applications
+# Enterprise CI/CD Platform for Containerized Web Applications
 
 **Production-grade CI/CD platform** delivering automated build, test, and deployment of containerized applications on AWS serverless infrastructure with **$80K-$600K+ annual cost savings** and 90% deployment time reduction.
+
+---
+
+## 🆕 **NEW: Healthcare DevOps Architecture**
+
+**🏥 HIPAA/HITRUST/NIST 800-53 Compliant Healthcare Platform**
+
+We've added a complete **enterprise healthcare DevOps architecture** with:
+- ✅ HIPAA, HITRUST, and NIST 800-53 compliance
+- ✅ Zero-Trust security with AWS Verified Access
+- ✅ AI-driven clinical data extraction (Amazon Comprehend Medical)
+- ✅ Automated healthcare workflows (AWS Step Functions)
+- ✅ Complete security stack (WAF, GuardDuty, Security Hub, Macie, Config)
+- ✅ Service Control Policies (SCPs) for organizational compliance
+- ✅ 6-year audit log retention
+
+👉 **[View Healthcare DevOps Architecture →](HEALTHCARE-README.md)**
+
+---
 
 ## Business Value
 

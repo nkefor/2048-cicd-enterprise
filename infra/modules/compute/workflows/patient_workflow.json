@@ -1,0 +1,277 @@
+{
+  "Comment": "Healthcare Patient Processing Workflow - Intake → Lab → Billing",
+  "StartAt": "PatientIntake",
+  "States": {
+    "PatientIntake": {
+      "Type": "Task",
+      "Resource": "${patient_intake_function_arn}",
+      "Parameters": {
+        "patientId.$": "$.patientId",
+        "personalInfo.$": "$.personalInfo",
+        "insurance.$": "$.insurance"
+      },
+      "ResultPath": "$.intakeResult",
+      "Next": "ValidateEligibility",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "NotifyIntakeFailure"
+        }
+      ],
+      "TimeoutSeconds": 30,
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.TooManyRequestsException"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ]
+    },
+
+    "ValidateEligibility": {
+      "Type": "Task",
+      "Resource": "${insurance_eligibility_function_arn}",
+      "ResultPath": "$.eligibility",
+      "Next": "EligibilityDecision",
+      "TimeoutSeconds": 30,
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ]
+    },
+
+    "EligibilityDecision": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.eligibility.approved",
+          "BooleanEquals": true,
+          "Next": "ScheduleLab"
+        }
+      ],
+      "Default": "RequestManualReview"
+    },
+
+    "ScheduleLab": {
+      "Type": "Task",
+      "Resource": "${lab_scheduler_function_arn}",
+      "Parameters": {
+        "patientId.$": "$.patientId",
+        "testTypes.$": "$.requestedTests"
+      },
+      "ResultPath": "$.labSchedule",
+      "Next": "WaitForLabCompletion",
+      "TimeoutSeconds": 30
+    },
+
+    "WaitForLabCompletion": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:getItem.waitForTaskToken",
+      "Parameters": {
+        "TableName": "${lab_results_table_name}",
+        "Key": {
+          "patientId": {
+            "S.$": "$.patientId"
+          }
+        },
+        "TaskToken.$": "$$.Task.Token"
+      },
+      "ResultPath": "$.labResults",
+      "Next": "ProcessLabResults",
+      "TimeoutSeconds": 86400,
+      "Catch": [
+        {
+          "ErrorEquals": ["States.Timeout"],
+          "ResultPath": "$.error",
+          "Next": "RequestManualReview"
+        }
+      ]
+    },
+
+    "ProcessLabResults": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "ExtractMedicalEntities",
+          "States": {
+            "ExtractMedicalEntities": {
+              "Type": "Task",
+              "Resource": "${comprehend_medical_function_arn}",
+              "Parameters": {
+                "labResults.$": "$.labResults",
+                "patientId.$": "$.patientId"
+              },
+              "ResultPath": "$.medicalEntities",
+              "End": true,
+              "TimeoutSeconds": 60,
+              "Retry": [
+                {
+                  "ErrorEquals": ["Lambda.ServiceException"],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 2
+                }
+              ]
+            }
+          }
+        },
+        {
+          "StartAt": "GenerateBilling",
+          "States": {
+            "GenerateBilling": {
+              "Type": "Task",
+              "Resource": "${billing_generator_function_arn}",
+              "Parameters": {
+                "labResults.$": "$.labResults",
+                "patientId.$": "$.patientId",
+                "insurance.$": "$.insurance"
+              },
+              "ResultPath": "$.billing",
+              "End": true,
+              "TimeoutSeconds": 30,
+              "Retry": [
+                {
+                  "ErrorEquals": ["Lambda.ServiceException"],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 2
+                }
+              ]
+            }
+          }
+        },
+        {
+          "StartAt": "NotifyProvider",
+          "States": {
+            "NotifyProvider": {
+              "Type": "Task",
+              "Resource": "${provider_notification_function_arn}",
+              "Parameters": {
+                "labResults.$": "$.labResults",
+                "patientId.$": "$.patientId"
+              },
+              "ResultPath": "$.notification",
+              "End": true,
+              "TimeoutSeconds": 30,
+              "Retry": [
+                {
+                  "ErrorEquals": ["Lambda.ServiceException"],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 2
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "ResultPath": "$.processing",
+      "Next": "SubmitClaim"
+    },
+
+    "SubmitClaim": {
+      "Type": "Task",
+      "Resource": "${claim_submission_function_arn}",
+      "Parameters": {
+        "patientId.$": "$.patientId",
+        "billing.$": "$.processing[1].billing",
+        "insurance.$": "$.insurance",
+        "medicalCodes.$": "$.processing[0].medicalEntities.icd10Codes"
+      },
+      "ResultPath": "$.claimStatus",
+      "Next": "UpdatePatientRecord",
+      "TimeoutSeconds": 30,
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ]
+    },
+
+    "UpdatePatientRecord": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Parameters": {
+        "TableName": "${patients_table_name}",
+        "Key": {
+          "patientId": {
+            "S.$": "$.patientId"
+          }
+        },
+        "UpdateExpression": "SET labResults = :lr, billingStatus = :bs, lastUpdated = :lu, claimStatus = :cs",
+        "ExpressionAttributeValues": {
+          ":lr": {
+            "M.$": "$.labResults"
+          },
+          ":bs": {
+            "S": "PROCESSED"
+          },
+          ":lu": {
+            "S.$": "$$.State.EnteredTime"
+          },
+          ":cs": {
+            "S.$": "$.claimStatus.status"
+          }
+        }
+      },
+      "ResultPath": null,
+      "Next": "WorkflowComplete"
+    },
+
+    "WorkflowComplete": {
+      "Type": "Succeed"
+    },
+
+    "RequestManualReview": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish.waitForTaskToken",
+      "Parameters": {
+        "TopicArn": "${manual_review_topic_arn}",
+        "Message": {
+          "patientId.$": "$.patientId",
+          "reason": "Insurance eligibility requires manual review",
+          "taskToken.$": "$$.Task.Token",
+          "timestamp.$": "$$.State.EnteredTime"
+        }
+      },
+      "Next": "ScheduleLab",
+      "TimeoutSeconds": 86400,
+      "Catch": [
+        {
+          "ErrorEquals": ["States.Timeout"],
+          "ResultPath": "$.error",
+          "Next": "NotifyIntakeFailure"
+        }
+      ]
+    },
+
+    "NotifyIntakeFailure": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${intake_failure_topic_arn}",
+        "Message": {
+          "patientId.$": "$.patientId",
+          "error.$": "$.error",
+          "timestamp.$": "$$.State.EnteredTime"
+        }
+      },
+      "Next": "WorkflowFailed"
+    },
+
+    "WorkflowFailed": {
+      "Type": "Fail",
+      "Error": "WorkflowExecutionFailed",
+      "Cause": "Patient workflow failed - manual intervention required"
+    }
+  }
+}
