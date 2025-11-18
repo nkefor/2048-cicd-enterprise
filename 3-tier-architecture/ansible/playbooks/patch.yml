@@ -1,0 +1,94 @@
+---
+- name: Patch All Servers
+  hosts: all
+  become: yes
+  serial: "{{ batch_size | default('50%') }}"
+  max_fail_percentage: 10
+
+  vars:
+    reboot_required: false
+    pre_patch_snapshot: true
+
+  pre_tasks:
+    - name: Display server information
+      debug:
+        msg: "Patching {{ inventory_hostname }} ({{ ansible_distribution }} {{ ansible_distribution_version }})"
+
+    - name: Check if reboot is required
+      stat:
+        path: /var/run/reboot-required
+      register: reboot_required_file
+      when: ansible_os_family == "Debian"
+
+    - name: Capture installed packages before patching
+      package_facts:
+        manager: auto
+
+    - name: Save package list
+      copy:
+        content: "{{ ansible_facts.packages | to_nice_json }}"
+        dest: "/tmp/pre_patch_packages_{{ ansible_date_time.epoch }}.json"
+
+  tasks:
+    - name: Update all packages (RHEL/CentOS/Amazon Linux)
+      yum:
+        name: '*'
+        state: latest
+        update_cache: yes
+        exclude: "{{ exclude_packages | default([]) }}"
+      when: ansible_os_family == "RedHat"
+      register: yum_update
+
+    - name: Update all packages (Debian/Ubuntu)
+      apt:
+        upgrade: dist
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+      register: apt_update
+
+    - name: Check if reboot is required (RHEL/CentOS)
+      shell: needs-restarting -r
+      register: reboot_required
+      failed_when: false
+      changed_when: reboot_required.rc == 1
+      when: ansible_os_family == "RedHat"
+
+    - name: Set reboot fact
+      set_fact:
+        reboot_required: "{{ (reboot_required.rc == 1) if ansible_os_family == 'RedHat' else reboot_required_file.stat.exists }}"
+
+  post_tasks:
+    - name: Reboot if required
+      reboot:
+        msg: "Rebooting for system updates"
+        pre_reboot_delay: 10
+        post_reboot_delay: 30
+        reboot_timeout: 600
+      when: reboot_required | bool
+
+    - name: Wait for system to become reachable
+      wait_for_connection:
+        delay: 10
+        timeout: 300
+      when: reboot_required | bool
+
+    - name: Verify system is up
+      command: uptime
+      register: uptime_output
+      changed_when: false
+
+    - name: Display uptime
+      debug:
+        msg: "{{ uptime_output.stdout }}"
+
+    - name: Get updated package list
+      package_facts:
+        manager: auto
+
+    - name: Display patching summary
+      debug:
+        msg:
+          - "Patching completed for {{ inventory_hostname }}"
+          - "Reboot required: {{ reboot_required }}"
+          - "Packages updated: {{ yum_update.changed if ansible_os_family == 'RedHat' else apt_update.changed }}"

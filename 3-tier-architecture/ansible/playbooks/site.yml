@@ -1,0 +1,38 @@
+---
+- name: Configure all servers
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Update package cache
+      yum:
+        update_cache: yes
+      tags: always
+
+- name: Configure Web/App Servers
+  hosts: tier_Private
+  become: yes
+  roles:
+    - common
+    - webserver
+    - appserver
+  tags: [webserver, appserver]
+
+- name: Configure Database (if needed)
+  hosts: tier_Database
+  become: yes
+  roles:
+    - common
+    - database
+  tags: database
+  when: "'tier_Database' in group_names"
+
+- name: Configure Bastion Host
+  hosts: role_Bastion
+  become: yes
+  roles:
+    - common
+    - bastion
+  tags: bastion
+  when: "'role_Bastion' in group_names"

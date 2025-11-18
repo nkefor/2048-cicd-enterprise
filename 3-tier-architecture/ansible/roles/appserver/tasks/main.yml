@@ -1,0 +1,61 @@
+---
+- name: Install application dependencies
+  yum:
+    name:
+      - php
+      - php-mysqlnd
+      - php-fpm
+      - php-json
+      - php-mbstring
+    state: present
+
+- name: Configure PHP-FPM
+  template:
+    src: www.conf.j2
+    dest: /etc/php-fpm.d/www.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart php-fpm
+
+- name: Configure PHP settings
+  lineinfile:
+    path: /etc/php.ini
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+  loop:
+    - { regexp: '^upload_max_filesize', line: 'upload_max_filesize = 32M' }
+    - { regexp: '^post_max_size', line: 'post_max_size = 32M' }
+    - { regexp: '^memory_limit', line: 'memory_limit = 256M' }
+    - { regexp: '^max_execution_time', line: 'max_execution_time = 300' }
+    - { regexp: '^display_errors', line: 'display_errors = Off' }
+    - { regexp: '^log_errors', line: 'log_errors = On' }
+  notify: restart php-fpm
+
+- name: Enable and start PHP-FPM
+  systemd:
+    name: php-fpm
+    state: started
+    enabled: yes
+
+- name: Create application directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: apache
+    group: apache
+    mode: '0755'
+  loop:
+    - /var/www/html/app
+    - /var/www/html/uploads
+    - /var/log/app
+
+- name: Set up application configuration
+  template:
+    src: app-config.php.j2
+    dest: /var/www/html/app/config.php
+    owner: apache
+    group: apache
+    mode: '0640'
+  no_log: true  # Don't log sensitive data

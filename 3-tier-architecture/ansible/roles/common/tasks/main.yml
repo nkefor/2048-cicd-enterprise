@@ -1,0 +1,63 @@
+---
+- name: Install common packages
+  yum:
+    name:
+      - vim
+      - git
+      - htop
+      - curl
+      - wget
+      - net-tools
+      - telnet
+      - nc
+      - amazon-ssm-agent
+      - amazon-cloudwatch-agent
+    state: present
+
+- name: Configure timezone
+  timezone:
+    name: America/New_York
+
+- name: Configure NTP
+  systemd:
+    name: chronyd
+    state: started
+    enabled: yes
+
+- name: Create admin group
+  group:
+    name: admin
+    state: present
+
+- name: Configure log rotation
+  template:
+    src: logrotate.conf.j2
+    dest: /etc/logrotate.d/app
+    mode: '0644'
+
+- name: Set up CloudWatch agent
+  template:
+    src: cloudwatch-config.json.j2
+    dest: /opt/aws/amazon-cloudwatch-agent/etc/config.json
+    mode: '0644'
+  notify: restart cloudwatch agent
+
+- name: Ensure security updates are installed
+  yum:
+    name: '*'
+    security: yes
+    state: latest
+  when: install_security_updates | default(true)
+
+- name: Configure SSH hardening
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+  loop:
+    - { regexp: '^PermitRootLogin', line: 'PermitRootLogin no' }
+    - { regexp: '^PasswordAuthentication', line: 'PasswordAuthentication no' }
+    - { regexp: '^X11Forwarding', line: 'X11Forwarding no' }
+    - { regexp: '^MaxAuthTries', line: 'MaxAuthTries 3' }
+  notify: restart sshd

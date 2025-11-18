@@ -1,0 +1,55 @@
+---
+- name: Install Apache web server
+  yum:
+    name:
+      - httpd
+      - mod_ssl
+    state: present
+
+- name: Create web root directory
+  file:
+    path: /var/www/html
+    state: directory
+    owner: apache
+    group: apache
+    mode: '0755'
+
+- name: Configure Apache
+  template:
+    src: httpd.conf.j2
+    dest: /etc/httpd/conf/httpd.conf
+    owner: root
+    group: root
+    mode: '0644'
+    validate: '/usr/sbin/httpd -t -f %s'
+  notify: restart httpd
+
+- name: Configure Apache security
+  template:
+    src: security.conf.j2
+    dest: /etc/httpd/conf.d/security.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart httpd
+
+- name: Enable and start Apache
+  systemd:
+    name: httpd
+    state: started
+    enabled: yes
+
+- name: Open HTTP port in firewall
+  firewalld:
+    service: http
+    permanent: yes
+    state: enabled
+    immediate: yes
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version|int >= 7
+  ignore_errors: yes
+
+- name: Configure log rotation for Apache
+  template:
+    src: httpd-logrotate.j2
+    dest: /etc/logrotate.d/httpd
+    mode: '0644'
