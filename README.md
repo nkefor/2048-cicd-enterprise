@@ -1,6 +1,16 @@
-# Enterprise CI/CD Pipeline for Containerized Web Applications
+# Enterprise CI/CD Platform with Serverless Event-Driven Applications
 
-**Production-grade CI/CD platform** delivering automated build, test, and deployment of containerized applications on AWS serverless infrastructure with **$80K-$600K+ annual cost savings** and 90% deployment time reduction.
+**Production-grade CI/CD platform** featuring both containerized applications (ECS Fargate) and serverless event-driven architectures (Lambda, EventBridge, Step Functions) with **$80K-$600K+ annual cost savings** and 90% deployment time reduction.
+
+## 🎯 Two Complete Production Systems
+
+### 1. **Containerized CI/CD Pipeline** (ECS Fargate)
+Enterprise-grade CI/CD for containerized web applications with automated deployment
+
+### 2. **Serverless Event-Driven Application** (Lambda + EventBridge)
+Modern task management system demonstrating event-driven architecture and serverless best practices
+
+👉 **[View Serverless Application Documentation](serverless/README.md)**
 
 ## Business Value
 
@@ -85,6 +95,7 @@ This **enterprise-grade CI/CD pipeline** automates the entire software delivery 
 
 ## Technology Stack
 
+### Containerized Pipeline (2048/)
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
 | **CI/CD** | GitHub Actions | Automated build and deployment |
@@ -97,35 +108,68 @@ This **enterprise-grade CI/CD pipeline** automates the entire software delivery 
 | **Monitoring** | CloudWatch | Logs, metrics, alarms |
 | **Security** | AWS IAM, OIDC | Identity and access management |
 
+### Serverless Application (serverless/)
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| **API** | API Gateway + Lambda | RESTful API endpoints |
+| **Database** | DynamoDB | NoSQL data storage with encryption |
+| **Events** | EventBridge | Event-driven workflow orchestration |
+| **Workflows** | Step Functions | Complex approval workflows |
+| **Encryption** | KMS | Data encryption and key management |
+| **Monitoring** | CloudWatch | Dashboards, logs, alarms, metrics |
+| **Security** | Trivy + Dependabot | Vulnerability and dependency scanning |
+| **Infrastructure** | Terraform | Infrastructure-as-Code |
+| **CI/CD** | GitHub Actions | Automated deployment with security scans |
+
 ## Project Structure
 
 ```
 2048-cicd-enterprise/
-├── 2048/
+├── 2048/                               # Containerized application
 │   ├── Dockerfile                      # Container definition
 │   └── www/                            # Static application files
-├── infra/
-│   ├── main.tf                         # Main Terraform config
-│   ├── variables.tf                    # Input variables
-│   ├── outputs.tf                      # Output values
-│   ├── vpc.tf                          # VPC and networking
-│   ├── ecr.tf                          # Container registry
-│   ├── ecs.tf                          # ECS cluster and service
-│   ├── alb.tf                          # Load balancer
-│   ├── iam.tf                          # IAM roles and policies
-│   ├── cloudwatch.tf                   # Monitoring and logging
-│   └── security-groups.tf              # Network security
+│
+├── serverless/                         # Serverless event-driven app
+│   ├── lambda/                         # Lambda function code
+│   │   ├── api/                        # API endpoint handlers
+│   │   │   ├── create-task/           # POST /tasks
+│   │   │   ├── get-task/              # GET /tasks/{id}
+│   │   │   ├── update-task/           # PUT /tasks/{id}
+│   │   │   ├── delete-task/           # DELETE /tasks/{id}
+│   │   │   └── list-tasks/            # GET /tasks
+│   │   ├── events/                     # Event-driven handlers
+│   │   │   ├── task-created/          # TaskCreated events
+│   │   │   ├── task-updated/          # TaskUpdated events
+│   │   │   └── task-completed/        # TaskCompleted events
+│   │   └── requirements.txt            # Python dependencies
+│   ├── infra/                          # Terraform infrastructure
+│   │   ├── main.tf                     # Provider configuration
+│   │   ├── variables.tf                # Input variables
+│   │   ├── outputs.tf                  # Output values
+│   │   ├── kms.tf                      # Encryption keys
+│   │   ├── dynamodb.tf                 # NoSQL database
+│   │   ├── lambda.tf                   # Lambda functions
+│   │   ├── api-gateway.tf              # HTTP API
+│   │   ├── eventbridge.tf              # Event bus and rules
+│   │   ├── stepfunctions.tf            # Workflow orchestration
+│   │   ├── iam.tf                      # IAM roles and policies
+│   │   └── cloudwatch.tf               # Monitoring and alarms
+│   ├── scripts/                        # Deployment scripts
+│   │   ├── package-lambdas.sh         # Package Lambda functions
+│   │   └── test-api.sh                # API testing script
+│   ├── tests/                          # Unit tests
+│   ├── docs/                           # Documentation
+│   │   └── DEPLOYMENT-GUIDE.md        # Deployment instructions
+│   └── README.md                       # Serverless app documentation
+│
 ├── .github/
-│   └── workflows/
-│       └── deploy.yaml                 # CI/CD pipeline
-├── scripts/
-│   ├── deploy.sh                       # Deployment automation
-│   └── cleanup.sh                      # Resource cleanup
-├── docs/
-│   ├── ENTERPRISE-VALUE.md             # ROI analysis
-│   ├── DEPLOYMENT-GUIDE.md             # Setup instructions
-│   └── TROUBLESHOOTING.md              # Problem resolution
-├── README.md                           # This file
+│   ├── workflows/
+│   │   ├── deploy.yaml                # Container CI/CD pipeline
+│   │   └── serverless-cicd.yaml       # Serverless CI/CD pipeline
+│   └── dependabot.yml                 # Automated dependency updates
+│
+├── ENTERPRISE-VALUE.md                # ROI analysis
+├── README.md                          # This file
 └── .gitignore
 ```
 

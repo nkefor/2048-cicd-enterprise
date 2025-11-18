@@ -1,0 +1,73 @@
+# Dependabot configuration for automated dependency updates
+version: 2
+
+updates:
+  # GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # Python dependencies for Lambda functions
+  - package-ecosystem: "pip"
+    directory: "/serverless/lambda"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "python"
+      - "lambda"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    allow:
+      - dependency-type: "all"
+    ignore:
+      # Ignore major version updates for boto3 to prevent breaking changes
+      - dependency-name: "boto3"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "botocore"
+        update-types: ["version-update:semver-major"]
+
+  # Terraform dependencies
+  - package-ecosystem: "terraform"
+    directory: "/serverless/infra"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "terraform"
+      - "infrastructure"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # Docker dependencies for containerized app
+  - package-ecosystem: "docker"
+    directory: "/2048"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
