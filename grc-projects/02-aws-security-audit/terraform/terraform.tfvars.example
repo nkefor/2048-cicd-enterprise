@@ -1,0 +1,129 @@
+# Project Configuration
+project_name = "aws-security-audit"
+environment  = "prod"
+
+# AWS Regions
+primary_region   = "us-east-1"
+secondary_region = "us-west-2"
+security_hub_regions = [
+  "us-east-1",
+  "us-west-2",
+  "eu-west-1",
+  "ap-southeast-1"
+]
+
+# AWS Organization (Multi-Account)
+organization_id            = "o-abc123def456"
+delegated_admin_account_id = "123456789012"  # Security account
+member_account_ids = [
+  "111111111111",  # Production
+  "222222222222",  # Staging
+  "333333333333",  # Development
+  "444444444444",  # Shared Services
+  "555555555555",  # DR/Backup
+]
+
+# Notification Settings
+notification_email         = "security-team@company.com"
+slack_webhook_url          = "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+pagerduty_integration_key  = "YOUR_PAGERDUTY_INTEGRATION_KEY"
+
+# Auto-Remediation Settings
+auto_remediate_critical = true   # Fix CRITICAL findings automatically
+auto_remediate_high     = true   # Fix HIGH findings automatically
+auto_remediate_medium   = false  # Require manual approval for MEDIUM
+auto_remediate_low      = false  # Require manual approval for LOW
+
+# Security Hub Standards
+enabled_standards = [
+  "aws-foundational-security-best-practices/v/1.0.0",
+  "cis-aws-foundations-benchmark/v/1.4.0",
+  "pci-dss/v/3.2.1"
+]
+
+cis_benchmark_version = "1.4.0"
+
+# Retention Policies
+evidence_retention_days = 2555  # 7 years for compliance
+log_retention_days      = 90    # 90 days for CloudWatch logs
+
+# Service Enablement
+enable_guardduty  = true  # Threat detection
+enable_inspector  = true  # Vulnerability assessment
+enable_config     = true  # Resource compliance
+
+# Compliance Thresholds
+compliance_threshold = 95  # Minimum acceptable compliance score (%)
+
+# Finding Age and SLAs
+max_findings_age_days      = 90   # Archive findings older than 90 days
+critical_finding_sla_hours = 4    # Fix CRITICAL within 4 hours
+high_finding_sla_hours     = 24   # Fix HIGH within 24 hours
+medium_finding_sla_hours   = 168  # Fix MEDIUM within 1 week
+
+# Standards Auto-Enable
+enable_auto_enable_standards = true  # Auto-enable standards in new accounts
+
+# Suppression Rules (Approved Exceptions)
+suppression_rules = {
+  dev_public_s3 = {
+    rule_id          = "DEV-S3-PUBLIC-01"
+    finding_type     = "S3.8"
+    resource_pattern = ".*-dev-public-.*"
+    reason           = "Approved for public demo content"
+    approved_by      = "security-lead@company.com"
+    expiration_date  = "2025-12-31"
+  }
+  staging_sg_ssh = {
+    rule_id          = "STAGING-SG-SSH-01"
+    finding_type     = "EC2.19"
+    resource_pattern = "sg-staging-bastion.*"
+    reason           = "Bastion host requires SSH from office IP"
+    approved_by      = "ciso@company.com"
+    expiration_date  = "2025-06-30"
+  }
+}
+
+# Custom Security Controls
+custom_controls = {
+  crypto_mining_detection = {
+    title          = "EC2 Crypto Mining Detection"
+    description    = "Detect unauthorized cryptocurrency mining"
+    severity       = "CRITICAL"
+    auto_remediate = true
+  }
+  data_exfiltration = {
+    title          = "S3 Data Exfiltration Detection"
+    description    = "Detect unusual S3 data transfer patterns"
+    severity       = "HIGH"
+    auto_remediate = false
+  }
+}
+
+# Compliance Frameworks
+compliance_frameworks = [
+  "CIS",
+  "PCI-DSS",
+  "NIST",
+  "HIPAA",
+  "SOC2",
+  "ISO27001",
+  "GDPR"
+]
+
+# QuickSight Dashboard
+enable_quicksight_dashboard = true
+quicksight_admin_user       = "arn:aws:quicksight:us-east-1:123456789012:user/default/admin"
+
+# Athena Queries
+enable_athena_queries = true
+
+# Additional Tags
+tags = {
+  Department  = "Security"
+  CostCenter  = "InfoSec"
+  Compliance  = "SOC2-PCI-HIPAA"
+  DataClass   = "Confidential"
+  Backup      = "Required"
+  Contact     = "security-team@company.com"
+}

@@ -1,0 +1,45 @@
+# SOC 2 Compliance Automation - Configuration Example
+# Copy this file to terraform.tfvars and update with your values
+
+project_name = "soc2-compliance"
+environment  = "prod"
+aws_region   = "us-east-1"
+
+# Alerting Configuration
+alert_email          = "security@example.com"
+alert_slack_webhook  = ""  # Optional: Slack webhook URL
+
+# Compliance Configuration
+evidence_retention_days     = 2555  # 7 years
+scan_frequency_minutes      = 60    # Hourly scans
+compliance_score_threshold  = 85    # Alert if score drops below 85%
+critical_finding_threshold  = 5     # Alert if >5 critical findings
+
+# Multi-Account Scanning (Optional)
+target_accounts   = []  # ["123456789012", "234567890123"]
+assume_role_name  = "SOC2ComplianceScanner"
+
+# Trust Principles to Monitor
+enabled_trust_principles = [
+  "security",
+  "availability",
+  "processing_integrity",
+  "confidentiality",
+  "privacy"
+]
+
+# Additional Compliance Frameworks
+enable_hipaa_controls   = false
+enable_pci_dss_controls = false
+enable_gdpr_controls    = false
+
+# Performance Optimization
+lambda_memory_size               = 512
+lambda_timeout                   = 300
+enable_lambda_reserved_concurrency = false
+
+# Cost Optimization
+dynamodb_read_capacity           = 5
+dynamodb_write_capacity          = 5
+enable_point_in_time_recovery    = true
+enable_quicksight                = false

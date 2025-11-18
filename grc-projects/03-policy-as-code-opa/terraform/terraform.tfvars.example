@@ -1,0 +1,15 @@
+project_name       = "policy-as-code-opa"
+environment        = "prod"
+aws_region         = "us-east-1"
+notification_email = "security@company.com"
+violation_threshold = 10
+
+enable_opa_gatekeeper = true
+
+policy_frameworks = [
+  "CIS",
+  "PCI-DSS",
+  "HIPAA",
+  "SOC2",
+  "ISO27001"
+]
