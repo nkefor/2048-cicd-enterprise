@@ -1,0 +1,206 @@
+name: Deploy Backend Lambda Function
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/lambda/**'
+      - '.github/workflows/deploy-backend.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/lambda/**'
+
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  test:
+    name: Test Lambda Function
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          cd src/lambda
+          pip install -r requirements.txt
+          echo "✅ Dependencies installed"
+
+      - name: Run linting
+        run: |
+          cd src/lambda
+          echo "🔍 Running flake8..."
+          flake8 visitor_counter.py --max-line-length=120 --ignore=E203,W503
+          echo "✅ Linting passed"
+
+      - name: Run unit tests
+        run: |
+          cd src/lambda
+          echo "🧪 Running pytest..."
+          pytest tests/ -v --cov=visitor_counter --cov-report=term-missing --cov-report=xml
+          echo "✅ Tests passed"
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        if: github.event_name == 'pull_request'
+        with:
+          file: ./src/lambda/coverage.xml
+          flags: lambda
+          name: lambda-coverage
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install security tools
+        run: |
+          pip install bandit safety
+
+      - name: Run Bandit security scan
+        run: |
+          cd src/lambda
+          echo "🔒 Running Bandit security scan..."
+          bandit -r visitor_counter.py -f json -o bandit-report.json || true
+          bandit -r visitor_counter.py
+          echo "✅ Security scan complete"
+
+      - name: Check for vulnerable dependencies
+        run: |
+          cd src/lambda
+          echo "🔍 Checking for vulnerable dependencies..."
+          safety check --json || true
+          safety check
+          echo "✅ Dependency check complete"
+
+  deploy:
+    name: Deploy to AWS Lambda
+    runs-on: ubuntu-latest
+    needs: [test, security-scan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install production dependencies
+        run: |
+          cd src/lambda
+          mkdir -p package
+          pip install boto3 -t package/
+          echo "✅ Production dependencies installed"
+
+      - name: Create deployment package
+        run: |
+          cd src/lambda
+          cp visitor_counter.py package/
+          cd package
+          zip -r ../lambda-deployment.zip .
+          cd ..
+          rm -rf package
+          echo "✅ Deployment package created"
+
+      - name: Upload to S3 (backup)
+        run: |
+          aws s3 cp src/lambda/lambda-deployment.zip \
+            s3://${{ secrets.S3_BUCKET_NAME }}/lambda-deployments/visitor-counter-$(date +%Y%m%d-%H%M%S).zip
+          echo "✅ Backup uploaded to S3"
+
+      - name: Deploy to Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }} \
+            --zip-file fileb://src/lambda/lambda-deployment.zip
+          echo "✅ Lambda function updated"
+
+      - name: Wait for function update
+        run: |
+          echo "⏳ Waiting for Lambda function to update..."
+          aws lambda wait function-updated \
+            --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }}
+          echo "✅ Lambda function ready"
+
+      - name: Run smoke test
+        run: |
+          echo "🧪 Running smoke test..."
+
+          # Invoke Lambda function
+          aws lambda invoke \
+            --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }} \
+            --payload '{"requestContext":{"http":{"method":"GET"}}}' \
+            --cli-binary-format raw-in-base64-out \
+            response.json
+
+          # Check response
+          if grep -q "statusCode" response.json; then
+            echo "✅ Lambda function is responding"
+            cat response.json | jq
+          else
+            echo "❌ Lambda function failed smoke test"
+            cat response.json
+            exit 1
+          fi
+
+      - name: Publish new version
+        run: |
+          VERSION=$(aws lambda publish-version \
+            --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }} \
+            --description "Deployed from GitHub Actions - commit ${{ github.sha }}" \
+            --query 'Version' \
+            --output text)
+
+          echo "✅ Published Lambda version: $VERSION"
+          echo "LAMBDA_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Deployment summary
+        run: |
+          echo "### 🚀 Backend Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Lambda Function**: ${{ secrets.LAMBDA_FUNCTION_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ env.LAMBDA_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region**: ${{ env.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Python Version**: ${{ env.PYTHON_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Deployment completed successfully!" >> $GITHUB_STEP_SUMMARY
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f response.json
+          rm -f src/lambda/lambda-deployment.zip

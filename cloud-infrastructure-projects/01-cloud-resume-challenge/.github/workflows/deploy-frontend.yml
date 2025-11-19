@@ -1,0 +1,116 @@
+name: Deploy Frontend to S3 and CloudFront
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Deploy to AWS S3
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Validate HTML, CSS, and JavaScript
+        run: |
+          echo "✅ Validating frontend files..."
+          # Check if files exist
+          test -f frontend/index.html || (echo "❌ index.html not found" && exit 1)
+          test -f frontend/css/style.css || (echo "❌ style.css not found" && exit 1)
+          test -f frontend/js/script.js || (echo "❌ script.js not found" && exit 1)
+          echo "✅ All required files exist"
+
+      - name: Update API endpoint in JavaScript
+        run: |
+          # Replace API endpoint with actual value from secrets
+          sed -i "s|https://api.resume.yourdomain.com|${{ secrets.API_ENDPOINT }}|g" frontend/js/script.js
+          echo "✅ Updated API endpoint"
+
+      - name: Sync files to S3
+        run: |
+          aws s3 sync frontend/ s3://${{ secrets.S3_BUCKET_NAME }}/ \
+            --delete \
+            --cache-control "max-age=31536000" \
+            --exclude "*.html" \
+            --exclude ".git/*" \
+            --exclude "README.md"
+
+          # Upload HTML with shorter cache
+          aws s3 sync frontend/ s3://${{ secrets.S3_BUCKET_NAME }}/ \
+            --cache-control "max-age=3600" \
+            --exclude "*" \
+            --include "*.html"
+
+          echo "✅ Files synced to S3"
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
+          echo "✅ CloudFront cache invalidated"
+
+      - name: Deployment summary
+        run: |
+          echo "### 🚀 Frontend Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **S3 Bucket**: ${{ secrets.S3_BUCKET_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **CloudFront Distribution**: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region**: ${{ env.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Deployment completed successfully!" >> $GITHUB_STEP_SUMMARY
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run security checks
+        run: |
+          echo "🔒 Running security checks..."
+
+          # Check for sensitive data
+          if grep -r "aws_access_key_id\|aws_secret_access_key\|password" frontend/ 2>/dev/null; then
+            echo "❌ Sensitive data found in frontend files!"
+            exit 1
+          fi
+
+          echo "✅ No sensitive data found"
+
+      - name: Check for broken links
+        run: |
+          echo "🔗 Checking for broken links..."
+          # Simple check for common issues
+          if grep -r "localhost\|127.0.0.1\|example.com" frontend/*.html 2>/dev/null; then
+            echo "⚠️ Found localhost or example.com references"
+          fi
+          echo "✅ Link check complete"

@@ -1,0 +1,10 @@
+# AWS Configuration
+aws_region  = "us-east-1"
+environment = "prod"
+
+# Domain Configuration
+domain_name      = "resume.yourdomain.com"
+route53_zone_id  = "Z1234567890ABC"
+
+# Project Configuration
+project_name = "cloud-resume"
