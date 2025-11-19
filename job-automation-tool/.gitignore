@@ -1,0 +1,115 @@
+# Job Automation Tool - Git Ignore
+
+# Sensitive Configuration Files
+config.json
+.env
+secrets.json
+credentials.json
+
+# User Data
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+job_bot.log
+job_bot_debug.log
+
+# Screenshots
+screenshots/
+*.png
+*.jpg
+*.jpeg
+
+# Resumes and Documents (Don't commit personal files)
+*.pdf
+*.docx
+*.doc
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Browser Data
+cookies/
+*.pkl
+*.pickle
+browser_profile/
+chromedriver.exe
+chromedriver
+geckodriver
+geckodriver.exe
+
+# Temporary Files
+tmp/
+temp/
+*.tmp
+
+# Backups
+backups/
+*.backup
+*.bak
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Package Manager
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build Artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Test Coverage
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Environments
+.env.local
+.env.*.local

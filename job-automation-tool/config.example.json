@@ -1,0 +1,172 @@
+{
+  "_comment": "Job Automation Tool Configuration - Copy to config.json and customize",
+
+  "personal_info": {
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "phone": "+1-555-123-4567",
+    "linkedin_email": "john.doe@example.com",
+    "linkedin_password": "your_linkedin_password_here",
+    "resume_path": "/absolute/path/to/your/resume.pdf",
+    "cover_letter_path": "/absolute/path/to/your/cover_letter.pdf",
+    "linkedin_url": "https://linkedin.com/in/johndoe",
+    "portfolio_url": "https://github.com/johndoe",
+    "website": "https://johndoe.com"
+  },
+
+  "job_preferences": {
+    "job_titles": [
+      "DevOps Engineer",
+      "Cloud Engineer",
+      "Site Reliability Engineer",
+      "Infrastructure Engineer",
+      "Platform Engineer",
+      "Senior DevOps Engineer"
+    ],
+    "locations": [
+      "Remote",
+      "Hybrid",
+      "Atlanta, GA",
+      "Alpharetta, GA",
+      "Dallas, TX",
+      "Houston, TX",
+      "Austin, TX",
+      "San Antonio, TX",
+      "North Carolina",
+      "Florida",
+      "Alabama",
+      "Tennessee",
+      "Arizona"
+    ],
+    "keywords": [
+      "AWS",
+      "Kubernetes",
+      "Terraform",
+      "Docker",
+      "CI/CD",
+      "Python",
+      "DevSecOps",
+      "Jenkins",
+      "GitOps",
+      "Ansible"
+    ],
+    "experience_level": [
+      "Entry level",
+      "Mid-Senior level",
+      "Associate"
+    ],
+    "remote_preference": "remote_only",
+    "salary_min": 100000,
+    "salary_max": 180000
+  },
+
+  "platforms": {
+    "_comment": "Enable only platforms you want to use. Start with 3-5 for best results",
+
+    "indeed": true,
+    "dice": true,
+    "ziprecruiter": true,
+
+    "linkedin": false,
+    "glassdoor": false,
+    "monster": false,
+    "careerbuilder": false,
+    "builtin": false,
+    "jobright_ai": false,
+    "remote_co": false,
+    "flexjobs": false,
+    "wellfound": false,
+    "weworkremotely": false,
+    "remotive": false,
+    "letsworkremotely": false,
+    "toptal": false,
+    "hired": false,
+    "angellist": false,
+    "theladders": false,
+    "zapier": false,
+    "flexa": false,
+    "nodesk": false,
+    "dynamitejobs": false
+  },
+
+  "automation_settings": {
+    "max_applications_per_run": 50,
+    "max_applications_per_platform": 20,
+    "delay_between_applications": 30,
+    "delay_between_platforms": 60,
+    "headless_browser": false,
+    "save_screenshots": true,
+    "screenshot_on_error_only": true,
+    "timeout_per_application": 180,
+    "timeout_per_platform": 600,
+    "retry_failed_applications": true,
+    "max_retries": 3,
+    "send_email_notifications": false,
+    "notification_email": "your.email@example.com"
+  },
+
+  "filters": {
+    "exclude_companies": [
+      "Company You Want To Avoid",
+      "Another Company to Skip"
+    ],
+    "exclude_keywords": [
+      "unpaid",
+      "volunteer",
+      "commission only",
+      "no salary",
+      "equity only"
+    ],
+    "required_keywords": [
+    ],
+    "min_job_age_days": 0,
+    "max_job_age_days": 30,
+    "exclude_recruiters": false
+  },
+
+  "browser_settings": {
+    "user_agent": "auto",
+    "window_size": "1920,1080",
+    "disable_images": false,
+    "disable_javascript": false,
+    "use_proxy": false,
+    "proxy_url": "",
+    "clear_cookies_on_start": false
+  },
+
+  "ai_settings": {
+    "_comment": "Optional: AI-powered resume matching and cover letter generation",
+    "enabled": false,
+    "provider": "openai",
+    "api_key": "your_api_key_here",
+    "model": "gpt-4",
+    "customize_resume": false,
+    "generate_cover_letter": false,
+    "match_threshold": 0.7
+  },
+
+  "captcha_settings": {
+    "_comment": "Optional: Automatic CAPTCHA solving service",
+    "enabled": false,
+    "service": "anticaptcha",
+    "api_key": "your_captcha_service_api_key",
+    "max_solve_time": 120
+  },
+
+  "logging": {
+    "level": "INFO",
+    "console_level": "INFO",
+    "file_level": "DEBUG",
+    "log_directory": "data/logs",
+    "max_log_size_mb": 10,
+    "backup_count": 5,
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  },
+
+  "database": {
+    "path": "data/applications.db",
+    "backup_enabled": true,
+    "backup_directory": "data/backups",
+    "auto_backup_interval_hours": 24
+  }
+}

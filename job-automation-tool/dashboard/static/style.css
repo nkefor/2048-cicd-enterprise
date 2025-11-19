@@ -1,0 +1,376 @@
+/**
+ * Job Automation Dashboard - Custom Styles
+ *
+ * Extends Bootstrap 5 with custom styling
+ */
+
+:root {
+    --primary-color: #007bff;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+    --dark-color: #212529;
+    --light-color: #f8f9fa;
+    --muted-color: #6c757d;
+
+    --card-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --card-hover-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.15);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #f5f7fa;
+    color: #333;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Cards */
+.card {
+    border: none;
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+    margin-bottom: 1.5rem;
+}
+
+.card:hover {
+    box-shadow: var(--card-hover-shadow);
+    transform: translateY(-2px);
+}
+
+.card-header {
+    border-bottom: 1px solid #e9ecef;
+    border-radius: 8px 8px 0 0;
+    padding: 1.25rem;
+}
+
+.card-header h5 {
+    color: #333;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Stat Cards */
+.stat-card {
+    border-left: 4px solid var(--primary-color);
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    border-left-color: var(--success-color);
+}
+
+.stat-card .stat-icon {
+    font-size: 2.5rem;
+    opacity: 0.8;
+}
+
+.stat-card h2 {
+    font-weight: 700;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.stat-card h6 {
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+/* Navigation */
+.navbar {
+    box-shadow: var(--card-shadow);
+    border-bottom: 2px solid rgba(0, 123, 255, 0.1);
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.25rem;
+}
+
+/* Tables */
+.table {
+    border-collapse: collapse;
+}
+
+.table th {
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    background-color: #f8f9fa;
+}
+
+.table td {
+    vertical-align: middle;
+    border-bottom: 1px solid #dee2e6;
+    padding: 1rem;
+}
+
+.table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.table-danger {
+    background-color: rgba(220, 53, 69, 0.1) !important;
+}
+
+.table-danger:hover {
+    background-color: rgba(220, 53, 69, 0.15) !important;
+}
+
+/* Badges */
+.badge {
+    font-size: 0.85rem;
+    padding: 0.5rem 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    border-radius: 4px;
+}
+
+.badge.bg-success {
+    background-color: var(--success-color) !important;
+}
+
+.badge.bg-danger {
+    background-color: var(--danger-color) !important;
+}
+
+.badge.bg-warning {
+    background-color: var(--warning-color) !important;
+    color: #333;
+}
+
+.badge.bg-info {
+    background-color: var(--info-color) !important;
+}
+
+.badge.bg-primary {
+    background-color: var(--primary-color) !important;
+}
+
+/* Progress Bars */
+.progress {
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: white;
+    transition: width 0.3s ease;
+}
+
+/* Charts */
+#chartApplications,
+#chartPlatforms {
+    max-height: 400px;
+}
+
+canvas {
+    max-width: 100%;
+}
+
+/* Footer */
+footer {
+    margin-top: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+footer p {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+footer small {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Text Utilities */
+.text-muted {
+    color: #6c757d !important;
+}
+
+.text-success {
+    color: var(--success-color) !important;
+}
+
+.text-danger {
+    color: var(--danger-color) !important;
+}
+
+.text-warning {
+    color: var(--warning-color) !important;
+}
+
+.text-info {
+    color: var(--info-color) !important;
+}
+
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+/* Buttons */
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+    transform: translateY(-1px);
+}
+
+.btn-success {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.btn-outline-secondary {
+    color: #6c757d;
+    border-color: #6c757d;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #f8f9fa;
+    border-color: #6c757d;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .stat-card h2 {
+        font-size: 1.75rem;
+    }
+
+    .stat-icon {
+        font-size: 2rem !important;
+    }
+
+    .table {
+        font-size: 0.9rem;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    .card-header {
+        padding: 1rem;
+    }
+}
+
+/* Loading States */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.spinner-border {
+    border-width: 0.25em;
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Print Styles */
+@media print {
+    .navbar,
+    footer,
+    .btn {
+        display: none;
+    }
+
+    .card {
+        box-shadow: none;
+        border: 1px solid #dee2e6;
+    }
+}
+
+/* Dark Mode Support (future) */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+    }
+
+    .card {
+        background-color: #2a2a2a;
+        color: #e0e0e0;
+    }
+
+    .table {
+        color: #e0e0e0;
+    }
+
+    .table th {
+        background-color: #333333;
+        color: #b0b0b0;
+    }
+
+    .table tbody tr:hover {
+        background-color: #333333;
+    }
+
+    .card-header {
+        background-color: #333333;
+        border-bottom-color: #444444;
+    }
+}

@@ -1,0 +1,47 @@
+# Job Automation Tool - Python Dependencies
+
+# Core Web Automation
+selenium==4.16.0
+webdriver-manager==4.0.1
+
+# Web Framework (Dashboard)
+Flask==3.0.0
+Flask-CORS==4.0.0
+
+# Data Processing
+pandas==2.1.4
+
+# HTTP Requests
+requests==2.31.0
+
+# Configuration & Validation
+python-dotenv==1.0.0
+pydantic==2.5.3
+
+# Database
+sqlite3  # Built-in, no installation needed
+
+# Logging & Utilities
+colorama==0.4.6  # For colored console output
+python-dateutil==2.8.2
+
+# Security
+cryptography==41.0.7  # For credential encryption
+
+# Optional: AI Resume Matching
+# openai==1.6.1  # Uncomment if using OpenAI API
+# anthropic==0.8.1  # Uncomment if using Claude API
+
+# Optional: CAPTCHA Solving
+# anticaptchaofficial==1.0.56  # Uncomment if using Anti-Captcha service
+# 2captcha-python==1.2.1  # Uncomment if using 2Captcha service
+
+# Testing (Development)
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+
+# Code Quality (Development)
+black==23.12.1
+flake8==7.0.0
+mypy==1.8.0

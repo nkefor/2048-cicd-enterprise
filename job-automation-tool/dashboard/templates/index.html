@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Automation Dashboard</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-dark bg-dark sticky-top">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="fas fa-robot"></i> Job Automation Dashboard
+            </span>
+            <div class="navbar-text text-muted">
+                <small id="last-update">Last update: just now</small>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid py-4">
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title text-muted mb-1">Total Applications</h6>
+                                <h2 class="mb-0" id="total-apps">0</h2>
+                            </div>
+                            <div class="stat-icon text-primary">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                        </div>
+                        <small class="text-muted" id="today-apps">Today: 0</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title text-muted mb-1">Successful</h6>
+                                <h2 class="mb-0 text-success" id="successful-apps">0</h2>
+                            </div>
+                            <div class="stat-icon text-success">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                        </div>
+                        <small class="text-muted" id="success-rate">Success Rate: 0%</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title text-muted mb-1">Failed</h6>
+                                <h2 class="mb-0 text-danger" id="failed-apps">0</h2>
+                            </div>
+                            <div class="stat-icon text-danger">
+                                <i class="fas fa-times-circle"></i>
+                            </div>
+                        </div>
+                        <small class="text-muted" id="this-week">This week: 0</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title text-muted mb-1">Active Platforms</h6>
+                                <h2 class="mb-0" id="active-platforms">0</h2>
+                            </div>
+                            <div class="stat-icon text-info">
+                                <i class="fas fa-network-wired"></i>
+                            </div>
+                        </div>
+                        <small class="text-muted">Tracked</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row mb-4">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-line text-primary"></i> Applications Over Time
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="chartApplications"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-pie text-info"></i> Success Rate by Platform
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="chartPlatforms"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Platform Health -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="fas fa-heartbeat text-success"></i> Platform Health
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Platform</th>
+                                        <th>Overall Success Rate</th>
+                                        <th>Recent Success Rate</th>
+                                        <th>Total Applications</th>
+                                        <th>Status</th>
+                                        <th>Last Run</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="platforms-table">
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Applications -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list text-warning"></i> Recent Applications
+                        </h5>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="loadApplications()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date/Time</th>
+                                        <th>Platform</th>
+                                        <th>Job Title</th>
+                                        <th>Company</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="applications-table">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-light mt-5 py-4">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-0">
+                        <i class="fas fa-info-circle"></i> Job Automation Dashboard
+                    </p>
+                    <small class="text-muted">Real-time monitoring and analytics</small>
+                </div>
+                <div class="col-md-6 text-end">
+                    <small class="text-muted">
+                        Version 2.0.0 | Last Updated: <span id="footer-time">--</span>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+
+    <script>
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            setInterval(refreshDashboard, 5000);  // Refresh every 5 seconds
+        });
+    </script>
+</body>
+</html>
