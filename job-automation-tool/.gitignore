@@ -113,3 +113,9 @@ dmypy.json
 # Environments
 .env.local
 .env.*.local
+
+# Demo/Test Files
+config_test.json
+test_demo.db
+test_*.db
+*_test.json
