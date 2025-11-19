@@ -1,0 +1,255 @@
+# AlertManager Configuration
+# Routes and aggregates alerts from Prometheus
+
+global:
+  resolve_timeout: 5m
+  # Slack configuration (optional)
+  slack_api_url: '${SLACK_WEBHOOK_URL}'
+
+# Define groups for alert grouping
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Root route
+route:
+  # Group alerts by these labels
+  group_by: ['alertname', 'cluster', 'service', 'severity']
+
+  # How long to wait before sending grouped alerts (wait for more alerts)
+  group_wait: 30s
+
+  # How long to wait before re-sending grouped alerts (if not resolved)
+  group_interval: 5m
+
+  # How long the alert must remain unfired to be considered resolved
+  repeat_interval: 4h
+
+  # Receiver - default notification channel
+  receiver: 'null'
+
+  # Sub-routes for specific alert types
+  routes:
+    # Critical security alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 30m
+      continue: true
+
+    # High severity alerts
+    - match:
+        severity: high
+      receiver: 'high-alerts'
+      group_wait: 10s
+      group_interval: 5m
+      repeat_interval: 2h
+      continue: true
+
+    # Medium severity alerts
+    - match:
+        severity: medium
+      receiver: 'medium-alerts'
+      group_wait: 1m
+      group_interval: 10m
+      repeat_interval: 4h
+      continue: true
+
+    # Info/Warning alerts
+    - match:
+        severity: warning
+      receiver: 'low-alerts'
+      group_wait: 5m
+      group_interval: 1h
+      repeat_interval: 24h
+      continue: false
+
+    # Compliance alerts
+    - match:
+        team: compliance
+      receiver: 'compliance-team'
+      group_wait: 30s
+      group_interval: 1h
+      repeat_interval: 4h
+      continue: true
+
+    # Platform/infrastructure alerts
+    - match:
+        team: platform
+      receiver: 'platform-team'
+      group_wait: 1m
+      group_interval: 10m
+      repeat_interval: 4h
+      continue: true
+
+# ============================================================
+# Receivers - Notification Channels
+# ============================================================
+
+receivers:
+  # Null receiver - discard alerts
+  - name: 'null'
+
+  # Critical security alerts -> Multiple channels
+  - name: 'critical-alerts'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#security-critical'
+        title: '🚨 CRITICAL Security Alert'
+        text: '{{ template "slack.default.text" . }}'
+        send_resolved: true
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+        actions:
+          - type: button
+            text: 'View in Grafana'
+            url: 'http://grafana:3000/d/falco-security'
+          - type: button
+            text: 'View in Kibana'
+            url: 'http://kibana:5601'
+
+    email_configs:
+      - to: 'security-critical@company.com'
+        from: 'alertmanager@company.com'
+        smarthost: '${SMTP_HOST}:${SMTP_PORT}'
+        auth_username: '${SMTP_USER}'
+        auth_password: '${SMTP_PASSWORD}'
+        require_tls: true
+        html: true
+        headers:
+          Subject: '[CRITICAL] Security Alert: {{ .GroupLabels.alertname }}'
+
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+        description: '{{ .GroupLabels.alertname }}: {{ .CommonAnnotations.summary }}'
+        severity: 'critical'
+
+  # High severity alerts -> Slack and Email
+  - name: 'high-alerts'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#security-alerts'
+        title: '🔴 HIGH Security Alert'
+        text: '{{ template "slack.default.text" . }}'
+        send_resolved: true
+        color: 'warning'
+
+    email_configs:
+      - to: 'security@company.com'
+        from: 'alertmanager@company.com'
+        smarthost: '${SMTP_HOST}:${SMTP_PORT}'
+        auth_username: '${SMTP_USER}'
+        auth_password: '${SMTP_PASSWORD}'
+        require_tls: true
+
+  # Medium severity alerts -> Slack only
+  - name: 'medium-alerts'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#security-notifications'
+        title: '🟡 MEDIUM Alert'
+        text: '{{ template "slack.default.text" . }}'
+        send_resolved: false
+        color: '#FF9800'
+
+  # Low priority alerts -> Summary email
+  - name: 'low-alerts'
+    email_configs:
+      - to: 'ops@company.com'
+        from: 'alertmanager@company.com'
+        smarthost: '${SMTP_HOST}:${SMTP_PORT}'
+        auth_username: '${SMTP_USER}'
+        auth_password: '${SMTP_PASSWORD}'
+        require_tls: true
+        headers:
+          Subject: '[INFO] Daily Alert Summary'
+
+  # Compliance team notifications
+  - name: 'compliance-team'
+    email_configs:
+      - to: 'compliance@company.com'
+        from: 'alertmanager@company.com'
+        smarthost: '${SMTP_HOST}:${SMTP_PORT}'
+        auth_username: '${SMTP_USER}'
+        auth_password: '${SMTP_PASSWORD}'
+        require_tls: true
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#compliance'
+        title: 'Compliance Alert'
+        text: '{{ template "slack.default.text" . }}'
+
+  # Platform team notifications
+  - name: 'platform-team'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#platform-alerts'
+        title: 'Platform Alert'
+        text: '{{ template "slack.default.text" . }}'
+
+# ============================================================
+# Inhibition Rules - Suppress Redundant Alerts
+# ============================================================
+
+inhibit_rules:
+  # Don't alert on high/medium/low if critical is already firing
+  - source_match:
+      severity: 'critical'
+    target_match_re:
+      severity: 'high|medium|warning'
+    equal: ['alertname', 'instance', 'service']
+
+  # Don't alert on medium/low if high is already firing
+  - source_match:
+      severity: 'high'
+    target_match_re:
+      severity: 'medium|warning'
+    equal: ['alertname', 'instance', 'service']
+
+  # Suppress availability alerts if service isn't actually down
+  - source_match:
+      alertname: 'ServiceUnavailable'
+    target_match:
+      severity: 'warning'
+    equal: ['instance']
+
+# ============================================================
+# Webhook Integration (Custom webhook handlers)
+# ============================================================
+
+# Uncomment to enable webhook integration
+# webhook_configs:
+#   - url: 'http://webhook-handler:8080/alerts'
+#     send_resolved: true
+#     headers:
+#       X-Custom-Header: 'AlertManager'
+#     filter:
+#       match:
+#         severity: critical
+
+# ============================================================
+# PagerDuty Global Configuration
+# ============================================================
+
+pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+# ============================================================
+# Notification Formatting Templates
+# ============================================================
+
+templates:
+  - |
+    {{ define "slack.default.pretext" }}
+      {{ if eq .Status "firing" }}Alert{{ else }}Resolved{{ end }}
+    {{ end }}
+
+    {{ define "slack.default.text" }}
+      {{ range .Alerts }}
+        *Alert:* {{ .Labels.alertname }}
+        *Severity:* {{ .Labels.severity }}
+        *Summary:* {{ .Annotations.summary }}
+        *Description:* {{ .Annotations.description }}
+        {{ if .Annotations.dashboard }}*Dashboard:* {{ .Annotations.dashboard }}{{ end }}
+        {{ if .Annotations.runbook }}*Runbook:* {{ .Annotations.runbook }}{{ end }}
+      {{ end }}
+    {{ end }}

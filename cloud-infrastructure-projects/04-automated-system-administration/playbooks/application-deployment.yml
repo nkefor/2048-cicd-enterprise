@@ -1,0 +1,389 @@
+---
+# Playbook: Application Deployment Pipeline
+# Purpose: Automated application deployment with zero-downtime updates
+# Author: DevOps Team
+# Version: 1.0.0
+# Last Updated: 2025-11-19
+
+- name: Application Deployment Pipeline
+  hosts: webservers
+  serial: "{{ serial_deployment | default(1) }}"
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Validate deployment parameters
+      assert:
+        that:
+          - app_version is defined
+          - app_name is defined
+          - deployment_user is defined
+        fail_msg: "Missing required deployment parameters"
+      tags: always
+
+    - name: Set deployment timestamp
+      set_fact:
+        deployment_timestamp: "{{ ansible_date_time.iso8601 }}"
+        deployment_id: "{{ app_name }}-{{ app_version }}-{{ ansible_date_time.iso8601_basic_short }}"
+      tags: always
+
+    - name: Verify application artifact
+      stat:
+        path: "{{ artifact_location }}/{{ app_artifact }}"
+      register: artifact_stat
+      failed_when: not artifact_stat.stat.exists
+      tags: always
+
+    - name: Record pre-deployment metrics
+      copy:
+        content: |
+          Pre-Deployment Metrics
+          =====================
+          Timestamp: {{ deployment_timestamp }}
+          Deployment ID: {{ deployment_id }}
+          Application: {{ app_name }}
+          Version: {{ app_version }}
+          Target Host: {{ inventory_hostname }}
+        dest: "/tmp/pre-deployment-{{ deployment_id }}.log"
+      tags: always
+
+  roles:
+    - name: common
+      tags: common
+
+  tasks:
+    # Pre-Deployment Health Checks
+    - name: Check application health
+      uri:
+        url: "http://{{ ansible_host }}:{{ app_port }}/health"
+        method: GET
+        status_code: 200
+        timeout: 10
+      register: health_check
+      ignore_errors: yes
+      tags: healthcheck
+
+    - name: Record pre-deployment health
+      set_fact:
+        pre_deployment_healthy: "{{ health_check.status == 200 }}"
+      tags: healthcheck
+
+    # Pre-Deployment Backup
+    - name: Backup current application
+      block:
+        - name: Create backup directory
+          file:
+            path: "/opt/backups/{{ app_name }}"
+            state: directory
+            mode: '0755'
+          tags: backup
+
+        - name: Backup current application code
+          archive:
+            path: "/opt/applications/{{ app_name }}/current"
+            dest: "/opt/backups/{{ app_name }}/backup-{{ deployment_timestamp }}.tar.gz"
+            format: gz
+          ignore_errors: yes
+          tags: backup
+
+        - name: Backup application database
+          shell: |
+            mysqldump -u{{ db_user }} -p{{ db_password }} {{ app_database }} > \
+            /opt/backups/{{ app_name }}/db-backup-{{ deployment_timestamp }}.sql
+          register: db_backup_result
+          ignore_errors: yes
+          tags: backup
+
+        - name: Cleanup old backups
+          shell: |
+            ls -t /opt/backups/{{ app_name }}/backup-*.tar.gz | tail -n +6 | xargs rm -f || true
+            ls -t /opt/backups/{{ app_name }}/db-backup-*.sql | tail -n +4 | xargs rm -f || true
+          tags: backup
+
+    # Drain connections
+    - name: Set server to maintenance mode
+      block:
+        - name: Create maintenance page
+          copy:
+            content: |
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <title>Maintenance in Progress</title>
+                <style>
+                  body { font-family: Arial, sans-serif; text-align: center; padding-top: 50px; }
+                  h1 { color: #333; }
+                  p { color: #666; }
+                </style>
+              </head>
+              <body>
+                <h1>Maintenance in Progress</h1>
+                <p>Application is being updated. Please try again in a few moments.</p>
+                <p>Deployment ID: {{ deployment_id }}</p>
+              </body>
+              </html>
+            dest: "/opt/applications/{{ app_name }}/maintenance.html"
+          tags: deployment
+
+        - name: Configure web server to show maintenance page
+          lineinfile:
+            path: "/etc/nginx/sites-available/{{ app_name }}"
+            regexp: "^    location / {"
+            line: "    location / { return 503; }"
+            state: present
+          when: app_webserver == "nginx"
+          notify: Reload nginx
+          tags: deployment
+
+        - name: Wait for active connections to drain
+          shell: |
+            netstat -an | grep -c ESTABLISHED || true
+          register: connection_count
+          until: connection_count.stdout | int < 5
+          retries: 12
+          delay: 5
+          tags: deployment
+
+      tags: maintenance
+
+    # Application Deployment
+    - name: Deploy application version
+      block:
+        - name: Create application directory structure
+          file:
+            path: "{{ item }}"
+            state: directory
+            owner: "{{ deployment_user }}"
+            group: "{{ deployment_group | default('www-data') }}"
+            mode: '0755'
+          loop:
+            - "/opt/applications/{{ app_name }}/releases/{{ app_version }}"
+            - "/opt/applications/{{ app_name }}/shared/logs"
+            - "/opt/applications/{{ app_name }}/shared/config"
+          tags: deployment
+
+        - name: Extract application artifact
+          unarchive:
+            src: "{{ artifact_location }}/{{ app_artifact }}"
+            dest: "/opt/applications/{{ app_name }}/releases/{{ app_version }}"
+            owner: "{{ deployment_user }}"
+            group: "{{ deployment_group | default('www-data') }}"
+            remote_src: yes
+          tags: deployment
+
+        - name: Configure application environment
+          copy:
+            content: |
+              APP_ENV={{ environment | default('production') }}
+              APP_VERSION={{ app_version }}
+              APP_DEPLOYMENT_ID={{ deployment_id }}
+              LOG_LEVEL={{ log_level | default('info') }}
+              {% if db_host is defined %}
+              DB_HOST={{ db_host }}
+              DB_USER={{ db_user }}
+              DB_NAME={{ app_database }}
+              {% endif %}
+              {% if cache_host is defined %}
+              CACHE_HOST={{ cache_host }}
+              CACHE_PORT={{ cache_port | default('6379') }}
+              {% endif %}
+            dest: "/opt/applications/{{ app_name }}/releases/{{ app_version }}/.env"
+            owner: "{{ deployment_user }}"
+            group: "{{ deployment_group | default('www-data') }}"
+            mode: '0600'
+          tags: deployment
+
+        - name: Install application dependencies
+          shell: |
+            cd /opt/applications/{{ app_name }}/releases/{{ app_version }}
+            {% if app_language == 'php' %}
+            composer install --no-dev --optimize-autoloader
+            {% elif app_language == 'python' %}
+            python3 -m venv venv
+            source venv/bin/activate
+            pip install -r requirements.txt
+            {% elif app_language == 'node' %}
+            npm ci --production
+            {% endif %}
+          become_user: "{{ deployment_user }}"
+          tags: deployment
+
+        - name: Run database migrations
+          shell: |
+            cd /opt/applications/{{ app_name }}/releases/{{ app_version }}
+            {% if app_language == 'php' %}
+            php artisan migrate --force
+            {% elif app_language == 'python' %}
+            python manage.py migrate
+            {% elif app_language == 'node' %}
+            npm run migrate
+            {% endif %}
+          become_user: "{{ deployment_user }}"
+          ignore_errors: yes
+          tags: deployment
+
+        - name: Run pre-deployment tests
+          shell: |
+            cd /opt/applications/{{ app_name }}/releases/{{ app_version }}
+            {% if app_language == 'php' %}
+            ./vendor/bin/phpunit
+            {% elif app_language == 'python' %}
+            python -m pytest
+            {% elif app_language == 'node' %}
+            npm test
+            {% endif %}
+          become_user: "{{ deployment_user }}"
+          ignore_errors: yes
+          tags: testing
+
+        - name: Update symbolic link to current release
+          file:
+            src: "/opt/applications/{{ app_name }}/releases/{{ app_version }}"
+            dest: "/opt/applications/{{ app_name }}/current"
+            state: link
+            force: yes
+          tags: deployment
+
+        - name: Clear application cache
+          shell: |
+            cd /opt/applications/{{ app_name }}/current
+            {% if app_language == 'php' %}
+            php artisan cache:clear
+            php artisan config:cache
+            php artisan view:clear
+            {% elif app_language == 'python' %}
+            find . -type d -name __pycache__ -exec rm -rf {} + || true
+            python manage.py collectstatic --noinput || true
+            {% elif app_language == 'node' %}
+            npm run build || true
+            {% endif %}
+          become_user: "{{ deployment_user }}"
+          ignore_errors: yes
+          tags: deployment
+
+      tags: deployment
+
+    # Service Restart
+    - name: Restart application services
+      block:
+        - name: Restart application service
+          systemd:
+            name: "{{ app_service_name }}"
+            state: restarted
+            daemon_reload: yes
+            enabled: yes
+          tags: services
+
+        - name: Wait for application to be ready
+          uri:
+            url: "http://{{ ansible_host }}:{{ app_port }}/health"
+            method: GET
+            status_code: 200
+            timeout: 10
+          register: health_result
+          until: health_result.status == 200
+          retries: 30
+          delay: 2
+          tags: services
+
+      tags: deployment
+
+    # Post-Deployment Health Checks
+    - name: Verify deployment health
+      block:
+        - name: Check application health endpoint
+          uri:
+            url: "http://{{ ansible_host }}:{{ app_port }}/health"
+            method: GET
+            status_code: 200
+            timeout: 10
+          register: post_health_check
+          tags: healthcheck
+
+        - name: Run smoke tests
+          shell: |
+            curl -f http://{{ ansible_host }}:{{ app_port }}/api/version
+            curl -f http://{{ ansible_host }}:{{ app_port }}/api/status
+          tags: testing
+
+        - name: Validate deployment
+          assert:
+            that:
+              - post_health_check.status == 200
+            fail_msg: "Post-deployment health check failed"
+          tags: healthcheck
+
+      tags: deployment
+
+    # Remove maintenance mode
+    - name: Disable maintenance mode
+      block:
+        - name: Restore normal web server configuration
+          lineinfile:
+            path: "/etc/nginx/sites-available/{{ app_name }}"
+            regexp: "^    location / { return 503; }"
+            line: "    location / { proxy_pass http://localhost:{{ app_port }}; }"
+            state: present
+          when: app_webserver == "nginx"
+          notify: Reload nginx
+          tags: deployment
+
+      tags: deployment
+
+    # Cleanup
+    - name: Cleanup old releases
+      shell: |
+        cd /opt/applications/{{ app_name }}/releases
+        ls -t | tail -n +6 | xargs rm -rf || true
+      tags: cleanup
+
+  handlers:
+    - name: Reload nginx
+      service:
+        name: nginx
+        state: reloaded
+        enabled: yes
+
+  post_tasks:
+    - name: Generate deployment report
+      copy:
+        content: |
+          Deployment Report
+          =================
+          Deployment ID: {{ deployment_id }}
+          Application: {{ app_name }}
+          Version: {{ app_version }}
+          Host: {{ inventory_hostname }}
+          Timestamp: {{ deployment_timestamp }}
+          Status: {{ 'SUCCESS' if health_result.status == 200 else 'FAILED' }}
+
+          Pre-Deployment Status: {{ 'Healthy' if pre_deployment_healthy else 'Unhealthy/N/A' }}
+          Post-Deployment Status: {{ 'Healthy' if post_health_check.status == 200 else 'Unhealthy' }}
+
+          Application URL: http://{{ ansible_host }}:{{ app_port }}
+          Health Check: http://{{ ansible_host }}:{{ app_port }}/health
+        dest: "/tmp/deployment-{{ deployment_id }}.report"
+      tags: always
+
+    - name: Display deployment summary
+      debug:
+        msg: |
+          Deployment completed successfully!
+
+          Application: {{ app_name }}
+          Version: {{ app_version }}
+          Host: {{ inventory_hostname }}
+          Deployment ID: {{ deployment_id }}
+
+          Health Status: {{ 'HEALTHY' if post_health_check.status == 200 else 'UNHEALTHY' }}
+
+          Rollback Command:
+          ansible-playbook playbooks/application-deployment.yml --extra-vars "app_version=<previous_version>"
+      tags: always
+
+  vars:
+    app_port: 8080
+    app_webserver: nginx
+    app_language: php
+    serial_deployment: 1
+    artifact_location: "/var/artifacts"
+    app_artifact: "application-{{ app_version }}.tar.gz"

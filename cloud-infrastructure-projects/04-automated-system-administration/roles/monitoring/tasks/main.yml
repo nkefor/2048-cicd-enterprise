@@ -1,0 +1,177 @@
+---
+# Monitoring role tasks
+# Purpose: Install and configure monitoring agents
+
+- name: Install monitoring dependencies
+  apt:
+    name:
+      - curl
+      - wget
+      - jq
+      - net-tools
+    state: present
+  tags:
+    - monitoring
+    - packages
+
+- name: Install node exporter
+  block:
+    - name: Create node_exporter user
+      user:
+        name: node_exporter
+        shell: /bin/false
+        system: yes
+        create_home: no
+      when: node_exporter_enabled | default(true)
+      tags:
+        - monitoring
+        - node_exporter
+
+    - name: Download node_exporter
+      get_url:
+        url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version | default('1.6.1') }}/node_exporter-{{ node_exporter_version | default('1.6.1') }}.linux-amd64.tar.gz"
+        dest: /tmp/node_exporter.tar.gz
+        timeout: 60
+      when: node_exporter_enabled | default(true)
+      tags:
+        - monitoring
+        - node_exporter
+
+    - name: Extract node_exporter
+      unarchive:
+        src: /tmp/node_exporter.tar.gz
+        dest: /tmp
+        remote_src: yes
+      when: node_exporter_enabled | default(true)
+      tags:
+        - monitoring
+        - node_exporter
+
+    - name: Install node_exporter binary
+      copy:
+        src: "/tmp/node_exporter-{{ node_exporter_version | default('1.6.1') }}.linux-amd64/node_exporter"
+        dest: /usr/local/bin/node_exporter
+        owner: root
+        group: root
+        mode: '0755'
+        remote_src: yes
+      when: node_exporter_enabled | default(true)
+      tags:
+        - monitoring
+        - node_exporter
+
+    - name: Create node_exporter systemd service
+      copy:
+        content: |
+          [Unit]
+          Description=Prometheus Node Exporter
+          After=network-online.target
+          Wants=network-online.target
+
+          [Service]
+          Type=simple
+          User=node_exporter
+          Group=node_exporter
+          ExecStart=/usr/local/bin/node_exporter \
+            --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/) \
+            --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)
+
+          SyslogIdentifier=node_exporter
+          Restart=always
+          RestartSec=5
+
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/node_exporter.service
+        owner: root
+        group: root
+        mode: '0644'
+      when: node_exporter_enabled | default(true)
+      notify: Restart node_exporter
+      tags:
+        - monitoring
+        - node_exporter
+
+    - name: Enable and start node_exporter
+      systemd:
+        name: node_exporter
+        state: started
+        enabled: yes
+        daemon_reload: yes
+      when: node_exporter_enabled | default(true)
+      tags:
+        - monitoring
+        - node_exporter
+
+  tags:
+    - monitoring
+
+- name: Configure firewall for monitoring
+  block:
+    - name: Allow node_exporter port
+      ufw:
+        rule: allow
+        port: "9100"
+        proto: tcp
+      when: enable_firewall | default(true) and node_exporter_enabled | default(true)
+      tags:
+        - monitoring
+        - firewall
+
+    - name: Allow prometheus port
+      ufw:
+        rule: allow
+        port: "9090"
+        proto: tcp
+      when: enable_firewall | default(true) and prometheus_enabled | default(false)
+      tags:
+        - monitoring
+        - firewall
+
+    - name: Allow grafana port
+      ufw:
+        rule: allow
+        port: "3000"
+        proto: tcp
+      when: enable_firewall | default(true) and grafana_enabled | default(false)
+      tags:
+        - monitoring
+        - firewall
+
+  tags:
+    - monitoring
+
+- name: Setup monitoring facts
+  copy:
+    content: |
+      {
+        "monitoring_enabled": true,
+        "node_exporter_enabled": {{ node_exporter_enabled | default(true) | lower }},
+        "prometheus_enabled": {{ prometheus_enabled | default(false) | lower }},
+        "grafana_enabled": {{ grafana_enabled | default(false) | lower }},
+        "monitoring_environment": "{{ monitoring_environment | default('production') }}"
+      }
+    dest: /etc/ansible/facts.d/monitoring.fact
+  tags:
+    - monitoring
+    - facts
+
+- name: Create monitoring directory
+  file:
+    path: /opt/monitoring
+    state: directory
+    mode: '0755'
+  tags:
+    - monitoring
+
+- name: Install htop and other monitoring tools
+  apt:
+    name:
+      - htop
+      - iotop
+      - nethogs
+      - sysstat
+    state: present
+  tags:
+    - monitoring
+    - packages

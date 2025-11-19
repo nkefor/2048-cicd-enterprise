@@ -1,0 +1,220 @@
+---
+# Common role tasks
+# Purpose: Install common packages and configurations
+
+- name: Update package cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+  tags:
+    - common
+    - packages
+
+- name: Install common packages
+  apt:
+    name: "{{ base_packages }}"
+    state: present
+    upgrade: "yes"
+  when: ansible_os_family == "Debian"
+  tags:
+    - common
+    - packages
+
+- name: Install Python dependencies
+  pip:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - pip
+    - setuptools
+    - wheel
+    - requests
+    - boto3
+  tags:
+    - common
+    - python
+
+- name: Create system directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /opt/applications
+    - /opt/scripts
+    - /opt/logs
+    - /var/backups
+    - /etc/ansible/facts.d
+  tags:
+    - common
+    - filesystem
+
+- name: Configure system limits
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: "{{ item }}"
+    state: present
+  loop:
+    - "* soft nofile {{ max_open_files }}"
+    - "* hard nofile {{ max_open_files }}"
+    - "* soft nproc {{ max_processes }}"
+    - "* hard nproc {{ max_processes }}"
+  tags:
+    - common
+    - performance
+
+- name: Configure kernel parameters
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: yes
+    state: present
+  loop: "{{ lookup('dict', kernel_params) }}"
+  tags:
+    - common
+    - kernel
+
+- name: Configure timezone
+  timezone:
+    name: "{{ system_timezone }}"
+  tags:
+    - common
+    - time
+
+- name: Install and configure NTP
+  block:
+    - name: Install chrony
+      apt:
+        name: chrony
+        state: present
+      tags:
+        - common
+        - time
+
+    - name: Configure chrony
+      copy:
+        content: |
+          pool {{ ntp_servers[0] }} iburst
+          {% for ntp in ntp_servers[1:] %}
+          server {{ ntp }} iburst
+          {% endfor %}
+          makestep 1.0 3
+          rtcsync
+        dest: /etc/chrony/chrony.conf
+        backup: yes
+      notify: Restart chrony
+      tags:
+        - common
+        - time
+
+    - name: Enable chrony service
+      systemd:
+        name: chrony
+        state: started
+        enabled: yes
+      tags:
+        - common
+        - time
+
+- name: Configure fail2ban
+  block:
+    - name: Install fail2ban
+      apt:
+        name: fail2ban
+        state: present
+      when: enable_fail2ban | default(true)
+      tags:
+        - common
+        - security
+
+    - name: Configure fail2ban
+      copy:
+        content: |
+          [DEFAULT]
+          bantime = 3600
+          findtime = 600
+          maxretry = 5
+
+          [sshd]
+          enabled = true
+          port = {{ ssh_port }}
+        dest: /etc/fail2ban/jail.local
+        backup: yes
+      when: enable_fail2ban | default(true)
+      notify: Restart fail2ban
+      tags:
+        - common
+        - security
+
+    - name: Enable fail2ban service
+      systemd:
+        name: fail2ban
+        state: started
+        enabled: yes
+      when: enable_fail2ban | default(true)
+      tags:
+        - common
+        - security
+
+- name: Configure system logging
+  block:
+    - name: Configure rsyslog
+      copy:
+        content: |
+          # /etc/rsyslog.d/99-custom.conf
+          *.*;auth,authpriv.none -/var/log/syslog
+          auth,authpriv.* /var/log/auth.log
+          {% if syslog_server %}
+          *.* @@{{ syslog_server }}:{{ syslog_port }}
+          {% endif %}
+        dest: /etc/rsyslog.d/99-custom.conf
+      notify: Restart rsyslog
+      tags:
+        - common
+        - logging
+
+    - name: Enable rsyslog service
+      systemd:
+        name: rsyslog
+        state: started
+        enabled: yes
+      tags:
+        - common
+        - logging
+
+- name: Configure logrotate
+  copy:
+    content: |
+      /var/log/syslog
+      /var/log/auth.log
+      {
+          weekly
+          rotate 4
+          compress
+          delaycompress
+          missingok
+          notifempty
+          create 0640 syslog adm
+          sharedscripts
+          postrotate
+              /usr/lib/rsyslog/rsyslog-rotate
+          endscript
+      }
+    dest: /etc/logrotate.d/custom
+  tags:
+    - common
+    - logging
+
+- name: Setup ansible facts
+  copy:
+    content: |
+      {
+        "managed_by": "ansible",
+        "automation_version": "{{ automation_version }}",
+        "last_updated": "{{ ansible_date_time.iso8601 }}"
+      }
+    dest: /etc/ansible/facts.d/system.fact
+  tags:
+    - common
+    - facts

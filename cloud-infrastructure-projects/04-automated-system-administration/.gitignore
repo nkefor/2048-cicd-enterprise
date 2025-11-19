@@ -1,0 +1,176 @@
+# Ansible Automation Project - .gitignore
+# Updated: 2025-11-19
+
+# Environment and configuration files
+.env
+.env.local
+.env.prod
+.env.*.local
+
+# Sensitive files
+*.vault
+vault_pass.txt
+.vault
+secrets/
+private_keys/
+
+# SSH keys
+*.pem
+*.key
+!*.pub
+.ssh/
+id_rsa
+id_rsa.pub
+
+# Credentials and sensitive data
+credentials.json
+credentials.yml
+*.credentials
+*.secret
+.aws/
+
+# Ansible retry files
+*.retry
+.retry/
+
+# Python virtual environments
+venv/
+env/
+ENV/
+.venv
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.env.local.php
+nbproject/
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+logs/
+*.log
+/var/log/
+ansible.log
+/tmp/
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.bak
+*.orig
+
+# OS specific
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Git specific
+.gitkeep
+.git/
+.gitattributes
+
+# Deployment artifacts
+build/
+dist/
+releases/
+*.tar.gz
+*.zip
+
+# Node modules (if using Node-based tooling)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Python cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local test data
+test_data/
+test_results/
+
+# Docker (if applicable)
+docker-compose.override.yml
+.dockerignore
+
+# Backup files
+*.backup
+*.bkp
+backup/
+backups/
+
+# Database dumps
+*.sql
+*.sql.gz
+*.dmp
+
+# Reports and output
+reports/
+*.html
+*.pdf
+
+# Temporary configuration
+*.local.yml
+hosts.local.yml
+
+# Cloud provider specific
+terraform.tfvars
+terraform.tfstate*
+.terraform/
+.boto
+.azure
+
+# Compiled templates
+*.pyc
+*.pyo
+
+# Distribution archives
+*.egg
+dist/
+build/
+
+# IDE cache
+.cache/
+.pytest_cache/
+.mypy_cache/
+
+# Coverage reports
+.coverage
+htmlcov/
+
+# Type checking
+.dmypy.json
+dmypy.json
+
+# Virtual environments
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Node JS packages
+package-lock.json
+yarn.lock
+
+# Ruby gems
+Gemfile.lock
+
+# Generated files
+*.generated.*
+GENERATED_*
+
+# Test outputs
+test_output.txt
+test_results.json

@@ -1,0 +1,35 @@
+---
+# Monitoring role defaults
+
+monitoring_enabled: true
+node_exporter_enabled: true
+prometheus_enabled: false
+grafana_enabled: false
+alertmanager_enabled: false
+
+node_exporter_version: "1.6.1"
+prometheus_version: "2.48.1"
+grafana_version: "10.2.0"
+alertmanager_version: "0.26.0"
+
+monitoring_environment: "production"
+enable_firewall: true
+
+node_exporter_port: 9100
+prometheus_port: 9090
+grafana_port: 3000
+alertmanager_port: 9093
+
+# Grafana configuration
+grafana_domain: "localhost"
+grafana_admin_user: "admin"
+grafana_admin_password: "admin"
+grafana_secret_key: "generated_secret_key"
+
+# Alert settings
+alert_email: "admin@example.com"
+alert_from_email: "alerts@example.com"
+smtp_server: "localhost:25"
+
+# Prometheus retention
+prometheus_retention: "15d"

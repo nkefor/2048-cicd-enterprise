@@ -1,0 +1,219 @@
+---
+# Database role tasks
+# Purpose: Configure MySQL and PostgreSQL databases
+
+- name: Install MySQL Server
+  apt:
+    name:
+      - mysql-server
+      - python3-pymysql
+    state: present
+  when: database_type | default('mysql') == 'mysql'
+  tags:
+    - database
+    - mysql
+
+- name: Install PostgreSQL Server
+  apt:
+    name:
+      - postgresql
+      - postgresql-contrib
+      - python3-psycopg2
+    state: present
+  when: database_type | default('mysql') == 'postgresql'
+  tags:
+    - database
+    - postgresql
+
+- name: Start and enable MySQL
+  systemd:
+    name: mysql
+    state: started
+    enabled: yes
+  when: database_type | default('mysql') == 'mysql'
+  tags:
+    - database
+    - mysql
+
+- name: Start and enable PostgreSQL
+  systemd:
+    name: postgresql
+    state: started
+    enabled: yes
+  when: database_type | default('mysql') == 'postgresql'
+  tags:
+    - database
+    - postgresql
+
+- name: Configure MySQL backup user
+  mysql_user:
+    name: backup_user
+    password: "{{ backup_user_password | default('backup123') }}"
+    priv: '*.*:SELECT,LOCK TABLES'
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  when: database_type | default('mysql') == 'mysql' and enable_mysql_backup | default(false)
+  tags:
+    - database
+    - mysql
+
+- name: Create backup script for MySQL
+  copy:
+    content: |
+      #!/bin/bash
+      # MySQL Backup Script
+
+      BACKUP_DIR="/var/backups/database/mysql"
+      TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+      BACKUP_FILE="${BACKUP_DIR}/backup-${TIMESTAMP}.sql.gz"
+
+      mkdir -p ${BACKUP_DIR}
+
+      echo "Starting MySQL backup..."
+
+      mysqldump \
+        -u backup_user \
+        -p{{ backup_user_password | default('backup123') }} \
+        --all-databases \
+        --single-transaction \
+        --quick \
+        | gzip > ${BACKUP_FILE}
+
+      if [ $? -eq 0 ]; then
+        echo "Backup completed: ${BACKUP_FILE}"
+        # Cleanup old backups
+        find ${BACKUP_DIR} -mtime +{{ backup_retention_days | default('30') }} -delete
+      else
+        echo "Backup failed"
+        exit 1
+      fi
+    dest: /usr/local/bin/mysql-backup.sh
+    owner: root
+    group: root
+    mode: '0755'
+  when: database_type | default('mysql') == 'mysql'
+  tags:
+    - database
+    - mysql
+
+- name: Schedule MySQL backups
+  cron:
+    name: "Daily MySQL backup"
+    hour: "2"
+    minute: "0"
+    job: "/usr/local/bin/mysql-backup.sh >> /var/log/mysql-backup.log 2>&1"
+    user: root
+  when: database_type | default('mysql') == 'mysql' and enable_mysql_backup | default(false)
+  tags:
+    - database
+    - mysql
+    - cron
+
+- name: Configure PostgreSQL backup user
+  become_user: postgres
+  postgresql_user:
+    name: backup_user
+    password: "{{ backup_user_password | default('backup123') }}"
+    role_attr_flags: LOGIN
+  when: database_type | default('mysql') == 'postgresql' and enable_postgresql_backup | default(false)
+  tags:
+    - database
+    - postgresql
+
+- name: Create backup script for PostgreSQL
+  copy:
+    content: |
+      #!/bin/bash
+      # PostgreSQL Backup Script
+
+      export PGPASSWORD="{{ backup_user_password | default('backup123') }}"
+
+      BACKUP_DIR="/var/backups/database/postgresql"
+      TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+      BACKUP_FILE="${BACKUP_DIR}/backup-${TIMESTAMP}.sql.gz"
+
+      mkdir -p ${BACKUP_DIR}
+
+      echo "Starting PostgreSQL backup..."
+
+      pg_dumpall -U backup_user | gzip > ${BACKUP_FILE}
+
+      if [ $? -eq 0 ]; then
+        echo "Backup completed: ${BACKUP_FILE}"
+        # Cleanup old backups
+        find ${BACKUP_DIR} -mtime +{{ backup_retention_days | default('30') }} -delete
+      else
+        echo "Backup failed"
+        exit 1
+      fi
+    dest: /usr/local/bin/postgres-backup.sh
+    owner: root
+    group: root
+    mode: '0755'
+  when: database_type | default('mysql') == 'postgresql'
+  tags:
+    - database
+    - postgresql
+
+- name: Schedule PostgreSQL backups
+  cron:
+    name: "Daily PostgreSQL backup"
+    hour: "2"
+    minute: "0"
+    job: "/usr/local/bin/postgres-backup.sh >> /var/log/postgres-backup.log 2>&1"
+    user: root
+  when: database_type | default('mysql') == 'postgresql' and enable_postgresql_backup | default(false)
+  tags:
+    - database
+    - postgresql
+    - cron
+
+- name: Configure database firewall
+  ufw:
+    rule: allow
+    port: "{{ database_port | default('3306' if database_type == 'mysql' else '5432') }}"
+    proto: tcp
+    from_ip: "{{ item }}"
+  loop: "{{ db_allowed_hosts | default(['10.0.0.0/8']) }}"
+  when: enable_firewall | default(true)
+  tags:
+    - database
+    - firewall
+
+- name: Create application database
+  mysql_db:
+    name: "{{ app_database | default('app_db') }}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  when: database_type | default('mysql') == 'mysql'
+  tags:
+    - database
+    - mysql
+
+- name: Create application database user
+  mysql_user:
+    name: "{{ app_db_user | default('app_user') }}"
+    password: "{{ app_db_password | default('apppass123') }}"
+    priv: "{{ app_database | default('app_db') }}.*:ALL"
+    host: '%'
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  when: database_type | default('mysql') == 'mysql'
+  tags:
+    - database
+    - mysql
+
+- name: Setup database monitoring
+  copy:
+    content: |
+      {
+        "database_type": "{{ database_type | default('mysql') }}",
+        "version": "{{ hostvars[inventory_hostname].ansible_os_family }}",
+        "monitoring_enabled": true,
+        "backup_enabled": {{ enable_mysql_backup | default(false) | lower }},
+        "backup_schedule": "daily"
+      }
+    dest: /etc/ansible/facts.d/database.fact
+  tags:
+    - database
+    - monitoring

@@ -1,0 +1,81 @@
+---
+# Ansible Galaxy Requirements
+# Install with: ansible-galaxy install -r requirements.yml
+# Updated: 2025-11-19
+
+collections:
+  # Community collections
+  - name: community.general
+    version: ">=7.0.0"
+
+  - name: community.postgresql
+    version: ">=3.0.0"
+
+  - name: community.mysql
+    version: ">=3.7.0"
+
+  - name: ansible.posix
+    version: ">=1.5.0"
+
+  - name: ansible.windows
+    version: ">=1.14.0"
+
+  # Cloud provider collections
+  - name: amazon.aws
+    version: ">=6.0.0"
+
+  - name: azure.azcollection
+    version: ">=1.17.0"
+
+  - name: google.cloud
+    version: ">=1.1.0"
+
+  # Container and orchestration
+  - name: community.docker
+    version: ">=3.4.0"
+
+  - name: kubernetes.core
+    version: ">=2.4.0"
+
+  # Monitoring and logging
+  - name: community.grafana
+    version: ">=1.6.0"
+
+  - name: community.prometheus
+    version: ">=0.1.0"
+
+roles:
+  # System administration
+  - name: geerlingguy.java
+    src: https://github.com/geerlingguy/ansible-role-java
+    version: master
+
+  - name: geerlingguy.nodejs
+    src: https://github.com/geerlingguy/ansible-role-nodejs
+    version: master
+
+  - name: geerlingguy.nginx
+    src: https://github.com/geerlingguy/ansible-role-nginx
+    version: master
+
+  - name: geerlingguy.mysql
+    src: https://github.com/geerlingguy/ansible-role-mysql
+    version: master
+
+  # Security roles
+  - name: dev-sec.os-hardening
+    src: https://github.com/dev-sec/ansible-os-hardening
+    version: master
+
+  - name: dev-sec.ssh-hardening
+    src: https://github.com/dev-sec/ansible-ssh-hardening
+    version: master
+
+  # Monitoring roles
+  - name: geerlingguy.prometheus
+    src: https://github.com/geerlingguy/ansible-role-prometheus
+    version: master
+
+  - name: geerlingguy.grafana
+    src: https://github.com/geerlingguy/ansible-role-grafana
+    version: master

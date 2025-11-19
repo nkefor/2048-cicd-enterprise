@@ -1,0 +1,128 @@
+---
+# Global variables for all hosts
+# Updated: 2025-11-19
+
+# System Configuration
+system_timezone: UTC
+ntp_servers:
+  - 0.ubuntu.pool.ntp.org
+  - 1.ubuntu.pool.ntp.org
+  - 2.ubuntu.pool.ntp.org
+  - 3.ubuntu.pool.ntp.org
+
+dns_servers:
+  - 8.8.8.8
+  - 8.8.4.4
+  - 1.1.1.1
+
+# Ansible Configuration
+ansible_user: ubuntu
+ansible_ssh_private_key_file: ~/.ssh/id_rsa
+ansible_python_interpreter: /usr/bin/python3
+ansible_port: 22
+ansible_connection: ssh
+ansible_timeout: 30
+
+# SSH Configuration
+ssh_port: 22
+permit_root_login: "no"
+password_authentication: "no"
+pubkey_authentication: "yes"
+
+# Service Users
+service_users:
+  - username: ansible
+    home: /home/ansible
+    shell: /bin/bash
+    sudo: yes
+    commands: "ALL"
+
+# SSH Users (public keys)
+ssh_users:
+  - username: ubuntu
+    ssh_key: "{{ lookup('file', '~/.ssh/id_rsa.pub') | default('') }}"
+
+# System Packages
+base_packages:
+  - build-essential
+  - curl
+  - wget
+  - git
+  - vim
+  - htop
+  - net-tools
+  - ntp
+  - chrony
+  - openssh-client
+  - openssh-server
+  - fail2ban
+  - unzip
+  - zip
+  - python3
+  - python3-pip
+  - python3-venv
+  - jq
+  - tree
+  - tmux
+  - screen
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - lsb-release
+
+# Backup Configuration
+backup_location: /var/backups
+backup_retention_days: 30
+cleanup_backups: true
+backup_remote: false
+enable_auto_updates: false
+enable_mysql_backup: false
+enable_postgresql_backup: false
+
+# Monitoring Configuration
+monitoring_enabled: true
+monitoring_environment: "production"
+node_exporter_enabled: true
+prometheus_enabled: false
+grafana_enabled: false
+alertmanager_enabled: false
+
+# Security Configuration
+enable_firewall: true
+enable_fail2ban: true
+enable_selinux: false
+enable_apparmor: false
+
+# Performance Tuning
+swap_size: "2G"
+max_open_files: 65536
+max_processes: 32768
+
+# Logging Configuration
+syslog_server: ""
+syslog_port: 514
+log_retention_days: 30
+
+# Kernel Parameters
+kernel_params:
+  net.ipv4.ip_forward: 0
+  net.ipv4.tcp_max_syn_backlog: 65535
+  net.core.somaxconn: 65535
+  net.ipv4.tcp_tw_reuse: 1
+  net.ipv4.tcp_fin_timeout: 30
+  vm.swappiness: 10
+
+# Environment-specific overrides
+app_environment: "{{ environment | default('production') }}"
+deployment_user: ubuntu
+deployment_group: www-data
+
+# Notification Settings
+notify_on_completion: false
+notify_email: "admin@example.com"
+
+# Tagging for cost tracking
+cost_center: "infrastructure"
+project_name: "automation"
+managed_by: "ansible"
+automation_version: "1.0.0"

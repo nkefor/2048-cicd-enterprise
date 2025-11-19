@@ -1,0 +1,14 @@
+---
+# Web Server role handlers
+
+- name: Reload Nginx
+  systemd:
+    name: nginx
+    state: reloaded
+    enabled: yes
+
+- name: Restart Nginx
+  systemd:
+    name: nginx
+    state: restarted
+    enabled: yes

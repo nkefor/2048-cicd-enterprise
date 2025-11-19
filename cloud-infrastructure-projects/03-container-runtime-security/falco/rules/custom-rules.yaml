@@ -1,0 +1,554 @@
+# Falco Custom Rules for Production Environments
+# Real-world security detection rules
+
+# Allowed processes and users for whitelist
+- list: allowed_processes
+  items:
+    - bash
+    - sh
+    - cat
+    - ls
+    - grep
+    - awk
+    - sed
+    - curl
+    - wget
+    - python
+    - python3
+    - node
+    - java
+    - ruby
+    - perl
+    - git
+    - npm
+    - pip
+    - apt-get
+    - yum
+    - systemctl
+    - journalctl
+    - ps
+    - top
+    - df
+    - du
+    - find
+    - chmod
+    - chown
+    - mkdir
+    - rm
+    - cp
+    - mv
+
+- list: shell_spawning_processes
+  items:
+    - apache2
+    - nginx
+    - mysql
+    - postgres
+    - java
+    - node
+    - python
+    - ruby
+
+- list: suspicious_read_files
+  items:
+    - /etc/shadow
+    - /etc/gshadow
+    - /var/www/html/config.php
+    - /app/config/secrets.json
+    - /var/lib/mysql/mysql.sock
+    - ~/.ssh/id_rsa
+    - ~/.aws/credentials
+    - ~/.docker/config.json
+
+- list: sensitive_file_paths
+  items:
+    - /etc/passwd
+    - /etc/shadow
+    - /etc/sudoers
+    - /root/.ssh
+    - /root/.bash_history
+    - /.ssh
+    - /home/*/.ssh
+    - /var/spool/cron
+
+- list: known_malicious_ips
+  items:
+    - "203.0.113.1"
+    - "198.51.100.1"
+    - "192.0.2.1"
+
+===================================================
+# CRITICAL: Container Escape Attempts
+===================================================
+
+- rule: Container Escape - ptrace Syscall
+  desc: Detect attempts to use ptrace for privilege escalation or container escape
+  condition: >
+    spawned_process and
+    syscall.name = "ptrace" and
+    container.id != "host"
+  output: >
+    CRITICAL: Potential container escape via ptrace
+    user=%user.name uid=%user.uid
+    container_id=%container.id
+    container_image=%container.image.repository
+    process=%proc.name
+    syscall=%syscall.name
+    parent=%proc.pname
+  priority: CRITICAL
+  source: syscall
+  tags: [container_escape, privilege_escalation, mitre_t1611]
+
+- rule: Container Escape - Privileged Capability Abuse
+  desc: Detect abuse of dangerous capabilities (CAP_SYS_ADMIN, CAP_SYS_PTRACE)
+  condition: >
+    spawned_process and
+    syscall.name in (process_vm_readv, process_vm_writev, ptrace) and
+    container.id != "host" and
+    (container.privileged = true or container.security_context.privileged = true)
+  output: >
+    CRITICAL: Privileged capability abuse detected
+    user=%user.name
+    container=%container.info
+    process=%proc.name args=%proc.args
+    capability_used=%syscall.name
+  priority: CRITICAL
+  source: syscall
+  tags: [container_escape, privilege_escalation]
+
+- rule: Container Escape - Mount Host Filesystem
+  desc: Detect mounting of host filesystem from within container
+  condition: >
+    spawned_process and
+    proc.name = "mount" and
+    container.id != "host" and
+    fd.name = "/host/*"
+  output: >
+    CRITICAL: Host filesystem mount attempt from container
+    user=%user.name
+    container_id=%container.id
+    process=%proc.name args=%proc.args
+    target=%fd.name
+  priority: CRITICAL
+  source: syscall
+  tags: [container_escape, host_access]
+
+===================================================
+# HIGH: Privilege Escalation
+===================================================
+
+- rule: Privilege Escalation - Unauthorized sudo
+  desc: Detect unauthorized sudo usage
+  condition: >
+    spawned_process and
+    proc.name = "sudo" and
+    user.uid > 1000 and
+    user.name not in (allowed_sudo_users)
+  output: >
+    HIGH: Unauthorized sudo attempt
+    user=%user.name uid=%user.uid
+    target_user=%proc.name
+    command=%proc.args
+    container_id=%container.id
+  priority: HIGH
+  source: syscall
+  tags: [privilege_escalation, sudo, unauthorized_access]
+
+- rule: Privilege Escalation - setuid Binary Execution
+  desc: Detect execution of setuid binaries by unprivileged users
+  condition: >
+    spawned_process and
+    proc.is_setuid = true and
+    user.uid > 1000 and
+    proc.name not in (allowed_processes)
+  output: >
+    HIGH: Setuid binary execution by unprivileged user
+    user=%user.name uid=%user.uid
+    binary=%proc.name
+    container_id=%container.id
+  priority: HIGH
+  source: syscall
+  tags: [privilege_escalation, setuid]
+
+===================================================
+# CRITICAL: Data Exfiltration
+===================================================
+
+- rule: Data Exfiltration - Large Outbound Transfer
+  desc: Detect large data transfers to external networks
+  condition: >
+    fd.snet = "127.0.0.0/8" or fd.sip != container.ip or
+    (fd.sip = "10.0.0.0/8" and fd.sport > 32768) and
+    (fd.numbytes > 100000000 or fd.duration > 3600)
+  output: >
+    CRITICAL: Data exfiltration detected
+    user=%user.name
+    container_id=%container.id
+    src_ip=%fd.sip src_port=%fd.sport
+    dst_ip=%fd.dip dst_port=%fd.dport
+    bytes_transferred=%fd.numbytes
+    duration=%fd.duration
+    process=%proc.name
+  priority: CRITICAL
+  source: syscall
+  tags: [data_exfiltration, network_anomaly]
+
+- rule: Data Exfiltration - Suspicious Archive Creation
+  desc: Detect creation of large archive files (potential data exfil preparation)
+  condition: >
+    file_write and
+    fd.name glob ("*.tar*" or "*.zip" or "*.gz" or "*.bz2" or "*.rar") and
+    container.id != "host" and
+    user.uid > 1000
+  output: >
+    HIGH: Suspicious archive file created
+    user=%user.name
+    container_id=%container.id
+    file=%fd.name
+    size=%fd.size
+    process=%proc.name args=%proc.args
+  priority: HIGH
+  source: syscall
+  tags: [data_exfiltration, suspicious_file]
+
+- rule: Data Exfiltration - DNS Tunneling
+  desc: Detect potential DNS exfiltration (unusual DNS query patterns)
+  condition: >
+    spawned_process and
+    syscall.name = "sendto" and
+    fd.dport = 53 and
+    fd.dip not in (dns_servers) and
+    fd.size > 512
+  output: >
+    HIGH: Potential DNS tunneling detected
+    user=%user.name
+    container_id=%container.id
+    query_size=%fd.size
+    destination=%fd.dip
+    process=%proc.name
+  priority: HIGH
+  source: syscall
+  tags: [data_exfiltration, dns_attack, c2]
+
+===================================================
+# HIGH: Unauthorized System Modification
+===================================================
+
+- rule: Unauthorized System Modification - /etc/passwd Write
+  desc: Detect modifications to /etc/passwd (user account creation/modification)
+  condition: >
+    file_write and
+    fd.name = "/etc/passwd" and
+    user.uid > 0 and
+    proc.name not in (useradd, userdel, usermod, adduser)
+  output: >
+    CRITICAL: Unauthorized /etc/passwd modification
+    user=%user.name uid=%user.uid
+    container_id=%container.id
+    process=%proc.name args=%proc.args
+    bytes_written=%fd.size
+  priority: CRITICAL
+  source: syscall
+  tags: [system_modification, persistence, account_manipulation]
+
+- rule: Unauthorized System Modification - Cron Job Injection
+  desc: Detect unauthorized cron job creation
+  condition: >
+    file_write and
+    fd.name glob ("/var/spool/cron/*" or "/etc/cron.d/*" or "/etc/crontab") and
+    user.uid > 0 and
+    proc.name not in (cron, crontab)
+  output: >
+    HIGH: Unauthorized cron job creation attempt
+    user=%user.name uid=%user.uid
+    container_id=%container.id
+    cron_file=%fd.name
+    process=%proc.name
+  priority: HIGH
+  source: syscall
+  tags: [persistence, cron_injection, scheduled_task]
+
+- rule: Unauthorized System Modification - SSH Key Injection
+  desc: Detect unauthorized SSH key additions to authorized_keys
+  condition: >
+    file_write and
+    fd.name glob ("*/.ssh/authorized_keys" or "*/.ssh/authorized_keys2") and
+    proc.name not in (sshd, ssh-copy-id, ssh)
+  output: >
+    CRITICAL: Unauthorized SSH key injection
+    user=%user.name
+    container_id=%container.id
+    file=%fd.name
+    process=%proc.name args=%proc.args
+  priority: CRITICAL
+  source: syscall
+  tags: [persistence, ssh_key_injection, unauthorized_access]
+
+===================================================
+# HIGH: Malware/Suspicious Process Behavior
+===================================================
+
+- rule: Suspicious Process - Shell Spawning from Webserver
+  desc: Detect shell spawning from web server processes (webshell)
+  condition: >
+    spawned_process and
+    proc.pname in (shell_spawning_processes) and
+    proc.name in (bash, sh, ksh, zsh) and
+    container.id != "host"
+  output: >
+    CRITICAL: Webshell detected - shell spawned from web process
+    parent_process=%proc.pname
+    shell=%proc.name
+    container_id=%container.id
+    container_image=%container.image.repository
+    user=%user.name
+    args=%proc.args
+  priority: CRITICAL
+  source: syscall
+  tags: [webshell, malware, rce, mitre_t1190]
+
+- rule: Suspicious Process - Reverse Shell
+  desc: Detect potential reverse shell connections
+  condition: >
+    spawned_process and
+    proc.name in (bash, sh, nc, ncat, netcat) and
+    fd.dport not in (22, 80, 443, 3306, 5432, 27017) and
+    container.id != "host"
+  output: >
+    HIGH: Potential reverse shell detected
+    process=%proc.name args=%proc.args
+    remote_ip=%fd.dip remote_port=%fd.dport
+    container_id=%container.id
+    user=%user.name
+  priority: HIGH
+  source: syscall
+  tags: [reverse_shell, malware, c2]
+
+- rule: Suspicious Process - Cryptocurrency Miner
+  desc: Detect cryptocurrency mining processes
+  condition: >
+    spawned_process and
+    proc.name in (xmrig, monero, cpu-miner, stratum) or
+    proc.args contains "x-mining" or
+    proc.args contains "stratum" and
+    container.id != "host"
+  output: >
+    HIGH: Cryptocurrency miner detected
+    process=%proc.name args=%proc.args
+    container_id=%container.id
+    user=%user.name
+    parent=%proc.pname
+  priority: HIGH
+  source: syscall
+  tags: [resource_hijacking, malware, persistence]
+
+===================================================
+# HIGH: Suspicious Network Behavior
+===================================================
+
+- rule: Suspicious Network - Unexpected Outbound Connection
+  desc: Detect outbound connections to non-whitelisted destinations
+  condition: >
+    outbound and
+    fd.sip not in (whitelist_ips) and
+    fd.dport not in (22, 80, 443, 3306, 5432, 5984, 27017, 6379, 9200, 5601) and
+    container.id != "host"
+  output: >
+    MEDIUM: Unexpected outbound connection
+    container_id=%container.id
+    source_ip=%fd.sip source_port=%fd.sport
+    destination_ip=%fd.dip destination_port=%fd.dport
+    process=%proc.name
+    user=%user.name
+  priority: MEDIUM
+  source: syscall
+  tags: [network_anomaly, suspicious_network]
+
+- rule: Suspicious Network - Port Scanning
+  desc: Detect potential network scanning/reconnaissance
+  condition: >
+    spawned_process and
+    proc.name in (nmap, masscan, zmap, nessus) and
+    container.id != "host"
+  output: >
+    HIGH: Port scanning tool executed
+    tool=%proc.name
+    container_id=%container.id
+    user=%user.name
+    args=%proc.args
+  priority: HIGH
+  source: syscall
+  tags: [reconnaissance, network_scanning]
+
+===================================================
+# MEDIUM: Sensitive File Access
+===================================================
+
+- rule: Suspicious File Access - /etc/shadow Read
+  desc: Detect unauthorized reads of /etc/shadow
+  condition: >
+    file_read and
+    fd.name = "/etc/shadow" and
+    user.uid > 0 and
+    proc.name not in (getent, grep, awk, sed)
+  output: >
+    HIGH: Unauthorized /etc/shadow access
+    user=%user.name uid=%user.uid
+    container_id=%container.id
+    process=%proc.name args=%proc.args
+  priority: HIGH
+  source: syscall
+  tags: [credential_access, sensitive_file_access]
+
+- rule: Suspicious File Access - AWS Credentials
+  desc: Detect attempts to read AWS credentials
+  condition: >
+    file_read and
+    (fd.name glob ("*/.aws/credentials" or "*/.aws/config")) and
+    user.uid != 0 and
+    container.id != "host"
+  output: >
+    HIGH: AWS credentials access detected
+    user=%user.name
+    container_id=%container.id
+    file=%fd.name
+    process=%proc.name
+  priority: HIGH
+  source: syscall
+  tags: [credential_access, cloud_credentials]
+
+===================================================
+# MEDIUM: Suspicious Command Execution
+===================================================
+
+- rule: Suspicious Command - wget/curl Execution
+  desc: Detect suspicious file downloads
+  condition: >
+    spawned_process and
+    proc.name in (wget, curl) and
+    (proc.args contains "http://" or proc.args contains "ftp://") and
+    not (proc.args contains "github.com" or proc.args contains "packagecloud.io") and
+    container.id != "host"
+  output: >
+    MEDIUM: Suspicious download command
+    process=%proc.name
+    url_args=%proc.args
+    container_id=%container.id
+    user=%user.name
+    source=%proc.cwd
+  priority: MEDIUM
+  source: syscall
+  tags: [file_download, suspicious_command]
+
+- rule: Suspicious Command - Encoded Script Execution
+  desc: Detect execution of base64 or hex encoded scripts
+  condition: >
+    spawned_process and
+    (proc.args contains "base64" or proc.args contains "xxd" or proc.args contains "python -c") and
+    (proc.args contains "import" or proc.args contains "exec" or proc.args contains "/bin/") and
+    container.id != "host"
+  output: >
+    MEDIUM: Encoded script execution detected
+    process=%proc.name
+    args=%proc.args
+    container_id=%container.id
+    user=%user.name
+  priority: MEDIUM
+  source: syscall
+  tags: [obfuscated_execution, suspicious_command]
+
+===================================================
+# COMPLIANCE & AUDIT RULES
+===================================================
+
+- rule: Compliance - Privilege Escalation via Package Manager
+  desc: Detect sudo usage for package installation (security policy violation)
+  condition: >
+    spawned_process and
+    proc.pname = "sudo" and
+    proc.name in (apt-get, yum, rpm, pacman, dpkg) and
+    user.uid > 1000
+  output: >
+    MEDIUM: Package manager executed with sudo
+    user=%user.name
+    command=%proc.name args=%proc.args
+    container_id=%container.id
+    timestamp=%timestamp%
+  priority: MEDIUM
+  source: syscall
+  tags: [compliance, audit_trail, policy_violation]
+
+- rule: Compliance - Unauthorized User Access
+  desc: Detect access from unauthorized system users
+  condition: >
+    spawned_process and
+    user.uid > 1000 and
+    user.uid < 65534 and
+    user.name not in (allowed_users)
+  output: >
+    INFO: Unauthorized user process execution
+    user=%user.name uid=%user.uid gid=%user.gid
+    process=%proc.name
+    container_id=%container.id
+    timestamp=%timestamp%
+  priority: NOTICE
+  source: syscall
+  tags: [compliance, unauthorized_access, audit]
+
+===================================================
+# DETECTION RULES END
+===================================================
+
+# Macros for rule optimization
+
+- macro: file_write
+  condition: >
+    (syscall.name = "write" or syscall.name = "openat" or
+     syscall.name = "open" or syscall.name = "creat") and
+    (fd.type = "file" or fd.type = "file_stream")
+
+- macro: file_read
+  condition: >
+    (syscall.name = "read" or syscall.name = "openat" or
+     syscall.name = "open" or syscall.name = "readv") and
+    fd.type in (regular_file, file_stream)
+
+- macro: outbound
+  condition: >
+    (syscall.name = "connect" or syscall.name = "sendto") and
+    fd.type = "ipv4" and
+    fd.dip not in (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)
+
+- macro: spawned_process
+  condition: syscall.name = "execve"
+
+# Whitelists (customize for your environment)
+
+- list: whitelist_ips
+  items:
+    - "127.0.0.1"
+    - "10.0.0.0/8"
+    - "172.16.0.0/12"
+    - "192.168.0.0/16"
+
+- list: allowed_sudo_users
+  items:
+    - "admin"
+    - "root"
+
+- list: allowed_users
+  items:
+    - "root"
+    - "daemon"
+    - "bin"
+    - "sys"
+    - "app"
+    - "www-data"
+    - "postgres"
+    - "mysql"
+
+- list: dns_servers
+  items:
+    - "8.8.8.8"
+    - "1.1.1.1"
+    - "208.67.222.222"

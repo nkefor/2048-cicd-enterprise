@@ -1,0 +1,23 @@
+---
+# Common role handlers
+
+- name: Restart chrony
+  systemd:
+    name: chrony
+    state: restarted
+    enabled: yes
+
+- name: Restart fail2ban
+  systemd:
+    name: fail2ban
+    state: restarted
+    enabled: yes
+
+- name: Restart rsyslog
+  systemd:
+    name: rsyslog
+    state: restarted
+    enabled: yes
+
+- name: Reload sysctl
+  command: sysctl -p

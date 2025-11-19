@@ -1,0 +1,416 @@
+version: '3.9'
+
+services:
+  # ============================================================
+  # Runtime Security: Falco
+  # ============================================================
+  falco:
+    image: falcosecurity/falco:latest
+    container_name: falco
+    privileged: true
+    networks:
+      - security_network
+    volumes:
+      - /var:/host/var:ro
+      - /proc:/host/proc:ro
+      - /boot:/host/boot:ro
+      - /lib/modules:/host/lib/modules:ro
+      - /usr:/host/usr:ro
+      - /etc:/host/etc:ro
+      - ./falco/falco.yaml:/etc/falco/falco.yaml:ro
+      - ./falco/rules/custom-rules.yaml:/etc/falco/rules.d/custom-rules.yaml:ro
+      - falco-logs:/var/log/falco
+    environment:
+      - SKIP_DRIVER_LOADER=yes
+    command: /usr/bin/falco -o userspace_output=true -o file_output.enabled=true -o file_output.filename=/var/log/falco/alerts.json
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "falco"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "app=runtime-security"
+      - "component=falco"
+    restart: unless-stopped
+
+  # ============================================================
+  # Log Storage: Elasticsearch
+  # ============================================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - indices.memory.index_buffer_size=30%
+      - logger.level=info
+    networks:
+      - security_network
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: curl -s http://localhost:9200 >/dev/null || exit 1
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+    restart: unless-stopped
+    labels:
+      - "app=observability"
+      - "component=elasticsearch"
+
+  # ============================================================
+  # Log Visualization: Kibana
+  # ============================================================
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.10.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=changeme
+      - xpack.security.enabled=false
+      - logging.level=info
+    networks:
+      - security_network
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: curl -s http://localhost:5601/api/status >/dev/null || exit 1
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+    restart: unless-stopped
+    labels:
+      - "app=observability"
+      - "component=kibana"
+
+  # ============================================================
+  # Metrics Collection: Prometheus
+  # ============================================================
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: prometheus
+    networks:
+      - security_network
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+    restart: unless-stopped
+    labels:
+      - "app=observability"
+      - "component=prometheus"
+
+  # ============================================================
+  # Metrics Visualization: Grafana
+  # ============================================================
+  grafana:
+    image: grafana/grafana:10.0.3
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=smtp.company.com:587
+      - GF_SMTP_USER=${SMTP_USER:-notifications@company.com}
+      - GF_SMTP_PASSWORD=${SMTP_PASSWORD:-changeme}
+      - GF_SMTP_FROM_ADDRESS=grafana@company.com
+    networks:
+      - security_network
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+      - elasticsearch
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+    restart: unless-stopped
+    labels:
+      - "app=observability"
+      - "component=grafana"
+
+  # ============================================================
+  # Vulnerability Scanning: Trivy
+  # ============================================================
+  trivy:
+    image: aquasec/trivy:latest
+    container_name: trivy
+    networks:
+      - security_network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - trivy_cache:/root/.cache/trivy
+      - ./trivy/reports:/reports
+    environment:
+      - TRIVY_SEVERITY=HIGH,CRITICAL
+      - TRIVY_FORMAT=json
+      - TRIVY_OUTPUT=/reports/latest_scan.json
+    command: >
+      trivy image
+      --vulnerability-db-repository ghcr.io/aquasecurity/trivy-db
+      --severity HIGH,CRITICAL
+      --format json
+      --output /reports/baseline_scan.json
+      sample-app:latest
+    restart: "no"
+    labels:
+      - "app=security"
+      - "component=trivy"
+
+  # ============================================================
+  # Log Forwarder: Filebeat (Ships Falco logs to Elasticsearch)
+  # ============================================================
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.10.0
+    container_name: filebeat
+    user: root
+    networks:
+      - security_network
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - falco-logs:/var/log/falco:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - ELASTICSEARCH_HOST=elasticsearch:9200
+      - ELASTICSEARCH_PORT=9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=changeme
+    command: filebeat -e -strict.perms=false
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+    restart: unless-stopped
+    labels:
+      - "app=observability"
+      - "component=filebeat"
+
+  # ============================================================
+  # Sample Web Application (For Demonstration)
+  # ============================================================
+  sample-app:
+    build:
+      context: ./sample-app
+      dockerfile: Dockerfile
+    image: sample-app:latest
+    container_name: sample-app
+    networks:
+      - security_network
+    ports:
+      - "8080:5000"
+    environment:
+      - FLASK_ENV=production
+      - LOG_LEVEL=info
+      - SECURITY_CONTEXT_ENABLED=true
+    volumes:
+      - sample_app_data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    restart: unless-stopped
+    # Security configurations
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+    read_only_root_filesystem: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - "app=sample-application"
+      - "version=1.0.0"
+      - "environment=demo"
+
+  # ============================================================
+  # Alert Manager (Route and aggregate Prometheus alerts)
+  # ============================================================
+  alertmanager:
+    image: prom/alertmanager:v0.25.0
+    container_name: alertmanager
+    networks:
+      - security_network
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/config.yml:/etc/alertmanager/config.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+    restart: unless-stopped
+    labels:
+      - "app=observability"
+      - "component=alertmanager"
+
+  # ============================================================
+  # Node Exporter (Host metrics for Prometheus)
+  # ============================================================
+  node-exporter:
+    image: prom/node-exporter:v1.6.1
+    container_name: node-exporter
+    networks:
+      - security_network
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9100/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    restart: unless-stopped
+    labels:
+      - "app=observability"
+      - "component=node-exporter"
+
+  # ============================================================
+  # Container Metrics Exporter (cAdvisor)
+  # ============================================================
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.0
+    container_name: cadvisor
+    networks:
+      - security_network
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    command:
+      - --port=8080
+      - --housekeeping_interval=10s
+      - --max_housekeeping_interval=30s
+      - --event_storage_event_limit=1000
+      - --disable_metrics=disk,diskIO,network,process
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    restart: unless-stopped
+    labels:
+      - "app=observability"
+      - "component=cadvisor"
+
+networks:
+  security_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  elasticsearch_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  alertmanager_data:
+    driver: local
+  falco-logs:
+    driver: local
+  sample_app_data:
+    driver: local
+  trivy_cache:
+    driver: local

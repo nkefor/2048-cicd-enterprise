@@ -1,0 +1,146 @@
+# Environment and Secrets
+.env
+.env.local
+.env.*.local
+.env.prod
+.env.staging
+
+# Docker
+.docker/config.json
+docker-compose.override.yml
+
+# Certificates and Keys
+*.pem
+*.key
+*.crt
+*.csr
+certs/
+ssl/
+tls/
+
+# Local data volumes
+data/
+elasticsearch_data/
+prometheus_data/
+grafana_data/
+alertmanager_data/
+falco-logs/
+sample_app_data/
+trivy_cache/
+
+# Logs
+*.log
+logs/
+*.gz
+*.tar
+*.zip
+
+# IDE and Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+.project
+.settings/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# Build artifacts
+build/
+dist/
+*.o
+*.a
+*.so
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml
+
+# Dependency lock files (optional, uncomment if you want to track)
+# package-lock.json
+# yarn.lock
+# requirements.lock
+
+# Sensitive data
+secrets/
+credentials/
+private/
+*.key.enc
+encrypted/
+
+# Backups
+backup/
+backups/
+*.backup
+*.bkp
+
+# OS files
+.DS_Store
+Thumbs.db
+.Thumbs.db
+ehthumbs.db
+
+# Monitoring and metrics
+prometheus/rules/*.bak
+grafana/dashboards/*.backup
+
+# Kubernetes manifests (if not using)
+k8s/
+kube/
+*.yaml.bak
+
+# CI/CD
+.gitlab-ci.yml.bak
+.travis.yml.bak
+Jenkinsfile.bak
+
+# Documentation builds
+docs/_build/
+site/
+
+# Misc
+*.orig
+*.rej
+.env.js
+config.json

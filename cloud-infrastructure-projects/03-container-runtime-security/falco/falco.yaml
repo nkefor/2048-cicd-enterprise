@@ -1,0 +1,234 @@
+# Falco Configuration
+# Real-time container runtime security monitoring
+
+# Core settings
+engine:
+  # Use the falco userspace engine instead of kernel module
+  # Recommended for compatibility and reduced performance overhead
+  kind: gRPC
+
+# Rules configuration
+rules:
+  # Load default rules
+  - /etc/falco/rules.d/
+
+  # Load custom rules
+  - /etc/falco/rules.d/custom-rules.yaml
+
+# Plugins and drivers configuration
+plugins:
+  - name: k8saudit
+    library_path: libk8saudit.so
+    init_config: ""
+    open_params: ""
+
+  - name: cloudtrail
+    library_path: libcloudtrail.so
+    init_config: ""
+    open_params: ""
+
+# Source configuration
+sources:
+  - name: syscall
+    enabled: true
+
+  - name: k8saudit
+    enabled: false
+
+  - name: cloudtrail
+    enabled: false
+
+# Performance tuning
+performance:
+  # Rate limit alerts (per second)
+  rule_matching:
+    # Max events per second from a single rule
+    max_ev_rate: 100
+
+  # Memory settings
+  symlink_max_cache_size: 10000
+  max_outputs_burst: 1000
+  outputs_queue_size: 100000
+
+# Output configuration - Log Files
+file_output:
+  enabled: true
+  keep_alive: false
+  filename: /var/log/falco/alerts.json
+
+# JSON output format
+json_output: true
+
+# Syslog output for centralized logging
+syslog_output:
+  enabled: false
+  facility: LOG_LOCAL0
+
+# HTTP output (webhook integration)
+http_output:
+  enabled: false
+  url: "http://localhost:8080/alerts"
+  user_agent: "Falco/1.0"
+
+# Program output (pipe to external program)
+program_output:
+  enabled: false
+  program: "curl -X POST http://localhost:8080/alert -d @-"
+
+# gRPC output (for gRPC clients)
+grpc_output:
+  enabled: true
+  bind_address: "0.0.0.0:5060"
+
+# Buffering and output configuration
+outputs:
+  - rate: 1000
+    max_burst: 5000
+
+# Standard output
+stdout_output:
+  enabled: false
+
+# Logging configuration
+logging:
+  # Log level (error, warning, info, debug)
+  level: info
+
+  # Log format
+  format: "[%timestamp%] [%level%] %message%"
+
+  # Log destination
+  type: file
+  file: /var/log/falco/falco.log
+
+# Watch configuration
+watch_config_dir: true
+
+# SSL/TLS configuration (for gRPC and HTTP)
+certs:
+  ca_path: ""
+  cert_path: ""
+  key_path: ""
+
+# Metrics settings
+metrics:
+  enabled: true
+  interval: 10
+
+  # Output counters for:
+  # - events processed per second
+  # - rules matched per second
+  # - warnings and errors
+  output: |
+    Falco metrics at 10s intervals
+
+# Buffering configuration
+buffering:
+  # Ring buffer settings for syscall events
+  ring_buffer_size_mb: 64
+
+  # CPU affinity for capture threads
+  cpus: ""
+
+# Advanced filtering (to reduce false positives)
+suppress_output: false
+
+# Container detection
+container_detection:
+  enabled: true
+
+  # Force container detection even if cgroups missing
+  force_containers: false
+
+  # Docker socket path
+  docker_socket: "/var/run/docker.sock"
+
+  # Podman socket path (for Podman support)
+  podman_socket: ""
+
+# Output rate limiting
+output_rate:
+  enabled: true
+  rate: 100          # max alerts per second
+  max_burst: 5000    # burst capacity
+
+# Falco syscall capture configuration
+syscall:
+  # Capture only specific syscalls for performance
+  enabled: true
+
+  # Full set of syscalls for security
+  trace_syscalls: true
+
+  # Drop low-priority events
+  drop_failed_syscalls: false
+
+# Custom libraries path
+libs_user_defined_filters: ""
+
+# Base output format template
+output_format: "time=%timestamp% priority=%priority% name=%rule% severity=%severity% container_id=%container_id% container_image=%container_image%"
+
+# Enable/disable specific warning categories
+warnings:
+  enabled: true
+  verbosity: info
+
+  # Warning types
+  syscall_drop_failed: false
+  syscall_drop_timeout: false
+  outputs_queue_full: true
+  corrupt_syscall_drop: false
+
+# Event capture configuration
+event_capture:
+  # Base syscalls to monitor
+  base_syscalls: true
+
+  # Include extended attributes
+  extended_attributes: true
+
+# Rule evaluation
+rule_matching:
+  enabled: true
+
+  # Load rules in deterministic order
+  sort_rules: true
+
+  # Rules can reference rules defined after them
+  forward_references: false
+
+# Security profiles
+security:
+  # Enforce least privilege
+  least_privilege: true
+
+  # Allow privileged mode for Falco itself
+  privileged: true
+
+# Docker metadata
+docker:
+  # Enabled docker support for deeper context
+  enabled: true
+
+  # Include docker labels in output
+  include_labels: true
+
+  # Socket path
+  socket: "/var/run/docker.sock"
+
+# Kubernetes metadata (if running in Kubernetes)
+kubernetes:
+  enabled: false
+  audit_log: false
+  audit_log_path: ""
+
+# Slack integration example (requires webhook URL)
+slack_integration:
+  enabled: false
+  webhook_url: ""
+  icon: "🚨"
+  channel: "#security-alerts"
+
+# Example rules for reference - see custom-rules.yaml for actual rules
+# The main rules are in /etc/falco/rules.d/custom-rules.yaml

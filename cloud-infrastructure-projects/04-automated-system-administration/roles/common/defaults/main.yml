@@ -1,0 +1,57 @@
+---
+# Common role defaults
+
+base_packages:
+  - build-essential
+  - curl
+  - wget
+  - git
+  - vim
+  - htop
+  - net-tools
+  - ntp
+  - chrony
+  - openssh-client
+  - openssh-server
+  - fail2ban
+  - unzip
+  - zip
+  - python3
+  - python3-pip
+  - python3-venv
+  - jq
+  - tree
+  - tmux
+  - screen
+
+system_timezone: UTC
+ntp_servers:
+  - 0.ubuntu.pool.ntp.org
+  - 1.ubuntu.pool.ntp.org
+  - 2.ubuntu.pool.ntp.org
+  - 3.ubuntu.pool.ntp.org
+
+dns_servers:
+  - 8.8.8.8
+  - 8.8.4.4
+  - 1.1.1.1
+
+ssh_port: 22
+max_open_files: 65536
+max_processes: 32768
+
+kernel_params:
+  net.ipv4.ip_forward: 0
+  net.ipv4.tcp_max_syn_backlog: 65535
+  net.core.somaxconn: 65535
+  net.ipv4.tcp_tw_reuse: 1
+  net.ipv4.tcp_fin_timeout: 30
+  vm.swappiness: 10
+
+enable_fail2ban: true
+enable_firewall: true
+
+syslog_server: ""
+syslog_port: 514
+
+automation_version: "1.0.0"

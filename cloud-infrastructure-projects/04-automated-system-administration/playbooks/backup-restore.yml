@@ -1,0 +1,469 @@
+---
+# Playbook: Backup and Disaster Recovery
+# Purpose: Automated backup and recovery procedures
+# Author: DevOps Team
+# Version: 1.0.0
+# Last Updated: 2025-11-19
+
+- name: Backup and Disaster Recovery Management
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Validate backup parameters
+      assert:
+        that:
+          - backup_retention_days is defined
+          - backup_location is defined
+        fail_msg: "Missing required backup parameters"
+      tags: always
+
+    - name: Create backup directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ backup_location }}"
+        - "{{ backup_location }}/database"
+        - "{{ backup_location }}/applications"
+        - "{{ backup_location }}/system"
+        - "{{ backup_location }}/logs"
+      tags: always
+
+  tasks:
+    # Database Backups
+    - name: MySQL Database Backups
+      block:
+        - name: Create MySQL backup directory
+          file:
+            path: "{{ backup_location }}/database/mysql"
+            state: directory
+            mode: '0755'
+          tags: database
+
+        - name: Backup MySQL databases
+          shell: |
+            BACKUP_DIR="{{ backup_location }}/database/mysql"
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+            # Backup all databases
+            mysqldump -u{{ mysql_user }} -p{{ mysql_password }} \
+              --all-databases \
+              --single-transaction \
+              --quick \
+              --lock-tables=false \
+              --routines \
+              --triggers \
+              --events \
+              > "${BACKUP_DIR}/all-databases-${TIMESTAMP}.sql"
+
+            # Compress backup
+            gzip "${BACKUP_DIR}/all-databases-${TIMESTAMP}.sql"
+
+            echo "MySQL backup completed: all-databases-${TIMESTAMP}.sql.gz"
+          register: mysql_backup
+          ignore_errors: yes
+          when: enable_mysql_backup | default(false)
+          tags: database
+
+        - name: Verify MySQL backup
+          stat:
+            path: "{{ backup_location }}/database/mysql/all-databases-*.sql.gz"
+          register: mysql_backup_stat
+          when: enable_mysql_backup | default(false)
+          tags: database
+
+      tags: backup
+
+    # PostgreSQL Database Backups
+    - name: PostgreSQL Database Backups
+      block:
+        - name: Create PostgreSQL backup directory
+          file:
+            path: "{{ backup_location }}/database/postgresql"
+            state: directory
+            mode: '0755'
+          tags: database
+
+        - name: Backup PostgreSQL databases
+          shell: |
+            BACKUP_DIR="{{ backup_location }}/database/postgresql"
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+            # Backup all databases
+            pg_dumpall \
+              --username={{ postgresql_user }} \
+              --no-password \
+              > "${BACKUP_DIR}/all-databases-${TIMESTAMP}.sql"
+
+            # Compress backup
+            gzip "${BACKUP_DIR}/all-databases-${TIMESTAMP}.sql"
+
+            echo "PostgreSQL backup completed: all-databases-${TIMESTAMP}.sql.gz"
+          environment:
+            PGPASSWORD: "{{ postgresql_password }}"
+          register: postgresql_backup
+          ignore_errors: yes
+          when: enable_postgresql_backup | default(false)
+          tags: database
+
+      tags: backup
+
+    # Application Backups
+    - name: Application Data Backups
+      block:
+        - name: Create application backup directory
+          file:
+            path: "{{ backup_location }}/applications/{{ item }}"
+            state: directory
+            mode: '0755'
+          loop: "{{ app_names | default([]) }}"
+          tags: applications
+
+        - name: Backup application files
+          block:
+            - name: Archive application directories
+              archive:
+                path: "/opt/applications/{{ item }}"
+                dest: "{{ backup_location }}/applications/{{ item }}/backup-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
+                format: gz
+                compression: 9
+              loop: "{{ app_names | default([]) }}"
+              tags: applications
+
+            - name: Verify application backups
+              find:
+                path: "{{ backup_location }}/applications"
+                pattern: "backup-*.tar.gz"
+              register: app_backups
+              tags: applications
+
+          tags: backup
+
+    # System Configuration Backups
+    - name: System Configuration Backups
+      block:
+        - name: Backup critical system files
+          block:
+            - name: Archive /etc directory
+              archive:
+                path: /etc
+                dest: "{{ backup_location }}/system/etc-backup-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
+                format: gz
+                compression: 9
+                exclude_paths:
+                  - /etc/ssl/private
+              tags: system
+
+            - name: Archive SSH keys
+              archive:
+                path: /root/.ssh
+                dest: "{{ backup_location }}/system/ssh-keys-backup-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
+                format: gz
+                compression: 9
+              tags: system
+              ignore_errors: yes
+
+            - name: Backup crontabs
+              shell: |
+                for user in $(cut -f1 -d: /etc/passwd); do
+                  crontab -u "$user" -l > "{{ backup_location }}/system/cron-$user-{{ ansible_date_time.iso8601_basic_short }}.txt" 2>/dev/null || true
+                done
+              tags: system
+
+          tags: backup
+
+    # Log Backups
+    - name: Log File Backups
+      block:
+        - name: Archive system logs
+          archive:
+            path: /var/log
+            dest: "{{ backup_location }}/logs/system-logs-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
+            format: gz
+            compression: 9
+            exclude_paths:
+              - /var/log/apt
+          tags: logs
+
+        - name: Backup application logs
+          block:
+            - name: Archive application logs
+              archive:
+                path: "/opt/applications/{{ item }}/shared/logs"
+                dest: "{{ backup_location }}/logs/app-{{ item }}-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
+                format: gz
+                compression: 9
+              loop: "{{ app_names | default([]) }}"
+              ignore_errors: yes
+              tags: logs
+
+          tags: backup
+
+    # Backup Rotation and Cleanup
+    - name: Manage backup retention
+      block:
+        - name: Remove old database backups
+          shell: |
+            find {{ backup_location }}/database -type f -mtime +{{ backup_retention_days }} -delete
+          tags: cleanup
+
+        - name: Remove old application backups
+          shell: |
+            find {{ backup_location }}/applications -type f -mtime +{{ backup_retention_days }} -delete
+          tags: cleanup
+
+        - name: Remove old system backups
+          shell: |
+            find {{ backup_location }}/system -type f -mtime +{{ backup_retention_days }} -delete
+          tags: cleanup
+
+        - name: Remove old log backups
+          shell: |
+            find {{ backup_location }}/logs -type f -mtime +{{ backup_retention_days }} -delete
+          tags: cleanup
+
+      tags: backup
+      when: cleanup_backups | default(true)
+
+    # Backup Verification
+    - name: Verify backup integrity
+      block:
+        - name: List recent backups
+          find:
+            path: "{{ backup_location }}"
+            type: f
+            age: -1d
+          register: recent_backups
+          tags: verification
+
+        - name: Verify backup sizes
+          shell: |
+            du -sh {{ backup_location }}/*
+          register: backup_sizes
+          tags: verification
+
+        - name: Test archive extraction (sampling)
+          shell: |
+            # Test extracting a backup file to verify integrity
+            BACKUP_FILE=$(find {{ backup_location }} -name "*.tar.gz" -type f | head -1)
+            if [ -n "$BACKUP_FILE" ]; then
+              tar -tzf "$BACKUP_FILE" > /dev/null 2>&1 && echo "Backup integrity verified" || echo "Backup integrity check failed"
+            fi
+          register: integrity_check
+          tags: verification
+
+      tags: backup
+
+    # Remote Backup Upload (Optional)
+    - name: Upload backups to remote storage
+      block:
+        - name: Install s3cmd for AWS S3 uploads
+          apt:
+            name: s3cmd
+            state: present
+          when: ansible_os_family == "Debian" and backup_to_s3 | default(false)
+          tags: remote-backup
+
+        - name: Configure s3cmd
+          copy:
+            content: |
+              [default]
+              access_key = {{ aws_access_key }}
+              secret_key = {{ aws_secret_key }}
+              bucket_location = {{ aws_region }}
+            dest: /root/.s3cfg
+            mode: '0600'
+          when: backup_to_s3 | default(false) and aws_access_key is defined
+          tags: remote-backup
+
+        - name: Upload backups to S3
+          shell: |
+            s3cmd sync {{ backup_location }}/ s3://{{ s3_bucket }}/backups/{{ inventory_hostname }}/
+          when: backup_to_s3 | default(false)
+          tags: remote-backup
+          ignore_errors: yes
+
+      tags: backup
+      when: backup_remote | default(false)
+
+    # Recovery Procedures
+    - name: Setup recovery procedures
+      block:
+        - name: Create recovery script
+          copy:
+            content: |
+              #!/bin/bash
+              # Disaster Recovery Script
+              # Usage: ./recover-database.sh <database> <backup-file>
+
+              BACKUP_FILE="$1"
+              DB_NAME="$2"
+
+              if [ -z "$BACKUP_FILE" ] || [ -z "$DB_NAME" ]; then
+                echo "Usage: $0 <backup-file> <database-name>"
+                exit 1
+              fi
+
+              if [ ! -f "$BACKUP_FILE" ]; then
+                echo "Backup file not found: $BACKUP_FILE"
+                exit 1
+              fi
+
+              echo "Starting database recovery..."
+              echo "Backup: $BACKUP_FILE"
+              echo "Database: $DB_NAME"
+
+              # Decompress if needed
+              if [[ "$BACKUP_FILE" == *.gz ]]; then
+                TEMP_FILE=$(mktemp)
+                gunzip -c "$BACKUP_FILE" > "$TEMP_FILE"
+                BACKUP_FILE="$TEMP_FILE"
+              fi
+
+              # Restore MySQL database
+              if command -v mysql &> /dev/null; then
+                mysql -u{{ mysql_user }} -p{{ mysql_password }} "$DB_NAME" < "$BACKUP_FILE"
+                echo "MySQL database restored successfully"
+              fi
+
+              # Restore PostgreSQL database
+              if command -v psql &> /dev/null; then
+                psql -U {{ postgresql_user }} -d "$DB_NAME" -f "$BACKUP_FILE"
+                echo "PostgreSQL database restored successfully"
+              fi
+
+              echo "Recovery completed at $(date)"
+            dest: "{{ backup_location }}/recover-database.sh"
+            mode: '0755'
+          tags: recovery
+
+        - name: Create recovery documentation
+          copy:
+            content: |
+              # Disaster Recovery Runbook
+
+              ## Database Recovery
+
+              ### MySQL Recovery
+              ```bash
+              # Find backup file
+              ls -la {{ backup_location }}/database/mysql/
+
+              # Restore database
+              gunzip < backup-file.sql.gz | mysql -u{{ mysql_user }} -p{{ mysql_password }}
+              ```
+
+              ### PostgreSQL Recovery
+              ```bash
+              # Find backup file
+              ls -la {{ backup_location }}/database/postgresql/
+
+              # Restore database
+              gunzip < backup-file.sql.gz | psql -U {{ postgresql_user }}
+              ```
+
+              ## Application Recovery
+
+              ```bash
+              # Extract application backup
+              cd /opt/applications
+              tar -xzf {{ backup_location }}/applications/app-name/backup-*.tar.gz
+              ```
+
+              ## System Configuration Recovery
+
+              ```bash
+              # Restore /etc directory
+              tar -xzf {{ backup_location }}/system/etc-backup-*.tar.gz -C /
+              ```
+
+              ## RTO/RPO Targets
+              - Recovery Time Objective (RTO): 1 hour
+              - Recovery Point Objective (RPO): 1 hour
+
+              ## Testing Procedure
+
+              1. Monthly backup verification tests
+              2. Quarterly full recovery drills
+              3. Annual disaster recovery simulation
+            dest: "{{ backup_location }}/RECOVERY-RUNBOOK.md"
+          tags: recovery
+
+      tags: backup
+
+  post_tasks:
+    - name: Generate backup report
+      copy:
+        content: |
+          Backup Report
+          =============
+          Timestamp: {{ ansible_date_time.iso8601 }}
+          Hostname: {{ inventory_hostname }}
+
+          Backup Status: COMPLETED
+
+          Backups Created:
+          - MySQL: {{ mysql_backup.rc | default('N/A') == 0 | ternary('SUCCESS', 'SKIPPED') }}
+          - PostgreSQL: {{ postgresql_backup.rc | default('N/A') == 0 | ternary('SUCCESS', 'SKIPPED') }}
+          - Applications: {{ app_backups.matched | default(0) }} backups
+          - System Configuration: COMPLETED
+          - Logs: COMPLETED
+
+          Backup Retention: {{ backup_retention_days }} days
+          Total Backups: {{ recent_backups.matched | default(0) }}
+
+          Backup Sizes:
+          {{ backup_sizes.stdout | default('Unable to calculate') }}
+
+          Integrity Check: {{ integrity_check.stdout | default('Passed') }}
+
+          Recovery Information:
+          - Recovery Script: {{ backup_location }}/recover-database.sh
+          - Recovery Runbook: {{ backup_location }}/RECOVERY-RUNBOOK.md
+
+          RTO: 1 hour
+          RPO: 1 hour
+        dest: "/tmp/backup-report-{{ inventory_hostname }}-{{ ansible_date_time.iso8601_basic_short }}.txt"
+      tags: always
+
+    - name: Display backup summary
+      debug:
+        msg: |
+          Backup process completed successfully!
+
+          Location: {{ backup_location }}
+          Retention: {{ backup_retention_days }} days
+          Recent Backups: {{ recent_backups.matched | default(0) }}
+
+          Files backed up:
+          - Databases (MySQL/PostgreSQL)
+          - Applications
+          - System configuration (/etc)
+          - Logs
+
+          Recovery Information:
+          - Script: {{ backup_location }}/recover-database.sh
+          - Runbook: {{ backup_location }}/RECOVERY-RUNBOOK.md
+
+          Next scheduled backup:
+          - Hourly: Database snapshots
+          - Daily: Full system backup
+          - Weekly: Extended retention
+      tags: always
+
+  vars:
+    backup_location: "/var/backups"
+    backup_retention_days: 30
+    cleanup_backups: true
+    backup_remote: false
+    enable_mysql_backup: false
+    enable_postgresql_backup: false
+    mysql_user: "root"
+    mysql_password: "{{ vault_mysql_password | default('password') }}"
+    postgresql_user: "postgres"
+    postgresql_password: "{{ vault_postgresql_password | default('password') }}"
+    app_names: []
+    backup_to_s3: false

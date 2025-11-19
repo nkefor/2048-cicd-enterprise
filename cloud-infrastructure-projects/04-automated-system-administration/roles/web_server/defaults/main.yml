@@ -1,0 +1,12 @@
+---
+# Web Server role defaults
+
+app_webserver: nginx
+app_name: app
+app_port: 8080
+deployment_user: www-data
+deployment_group: www-data
+enable_firewall: true
+enable_ssl: false
+ssl_certificate_path: /etc/ssl/certs/app.crt
+ssl_key_path: /etc/ssl/private/app.key

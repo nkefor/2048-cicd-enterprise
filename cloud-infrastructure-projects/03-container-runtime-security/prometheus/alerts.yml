@@ -1,0 +1,331 @@
+# Prometheus Alert Rules for Container Runtime Security
+
+groups:
+  - name: container_security
+    interval: 15s
+    rules:
+      # ============================================================
+      # CRITICAL Alerts
+      # ============================================================
+
+      - alert: ContainerEscapeAttempt
+        expr: increase(falco_alerts_total{severity="CRITICAL",rule=~".*Escape.*"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+          urgency: immediate
+        annotations:
+          summary: "CRITICAL: Container escape attempt detected"
+          description: "{{ $value }} container escape attempts detected in the last 5 minutes"
+          dashboard: "http://grafana:3000/d/falco-security"
+          runbook: "https://company.com/runbooks/container-escape"
+          impact: "Immediate action required - potential system compromise"
+
+      - alert: PrivilegeEscalationDetected
+        expr: increase(falco_alerts_total{severity="CRITICAL",rule=~".*Privilege.*"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+          urgency: immediate
+        annotations:
+          summary: "CRITICAL: Privilege escalation attempt detected"
+          description: "{{ $value }} privilege escalation attempts detected"
+          container_id: "{{ $labels.container_id }}"
+          impact: "Potential unauthorized root access"
+
+      - alert: MalwareDetected
+        expr: increase(falco_alerts_total{severity="CRITICAL",rule=~".*Malware.*|.*Webshell.*"}[5m]) > 0
+        for: 30s
+        labels:
+          severity: critical
+          team: security
+          urgency: immediate
+        annotations:
+          summary: "CRITICAL: Malware/Webshell detected"
+          description: "{{ $value }} malware/webshell detections in last 5 minutes"
+          action: "Immediately isolate container and preserve forensics"
+
+      - alert: DataExfiltration
+        expr: increase(falco_alerts_total{severity="CRITICAL",rule=~".*Exfiltration.*"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+          urgency: immediate
+        annotations:
+          summary: "CRITICAL: Data exfiltration detected"
+          description: "{{ $value }} data exfiltration attempts detected"
+          impact: "Sensitive data may have been compromised"
+
+      # ============================================================
+      # HIGH Alerts
+      # ============================================================
+
+      - alert: HighVulnerabilityCountDetected
+        expr: >
+          (count(vulnerability_scan_results{severity="CRITICAL"}) > 0) or
+          (count(vulnerability_scan_results{severity="HIGH"}) > 5)
+        for: 5m
+        labels:
+          severity: high
+          team: security
+        annotations:
+          summary: "HIGH: Critical or multiple high vulnerabilities detected"
+          description: |
+            Critical Vulnerabilities: {{ $value }}
+            Image: {{ $labels.image }}
+          action: "Patch vulnerabilities or replace image"
+          dashboard: "http://grafana:3000/d/vulnerability-dashboard"
+
+      - alert: SuspiciousNetworkActivity
+        expr: increase(falco_alerts_total{severity="HIGH",rule=~".*Network.*|.*DNS.*"}[10m]) > 10
+        for: 5m
+        labels:
+          severity: high
+          team: security
+        annotations:
+          summary: "HIGH: Suspicious network activity detected"
+          description: "{{ $value }} suspicious network events in last 10 minutes"
+          container_id: "{{ $labels.container_id }}"
+
+      - alert: UnauthorizedFileModification
+        expr: increase(falco_alerts_total{severity="HIGH",rule=~".*Unauthorized.*|.*Modification.*"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: high
+          team: security
+        annotations:
+          summary: "HIGH: Unauthorized file modification detected"
+          description: "System files were modified by unauthorized process"
+          process: "{{ $labels.process }}"
+
+      - alert: SuspiciousProcessExecution
+        expr: increase(falco_alerts_total{severity="HIGH",rule=~".*Shell.*|.*Reverse.*"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: high
+          team: security
+        annotations:
+          summary: "HIGH: Suspicious process execution detected"
+          description: "Potentially malicious process spawned: {{ $labels.process }}"
+          container: "{{ $labels.container_id }}"
+
+      # ============================================================
+      # MEDIUM Alerts
+      # ============================================================
+
+      - alert: ComplianceViolation
+        expr: compliance_score < 95
+        for: 30m
+        labels:
+          severity: medium
+          team: compliance
+        annotations:
+          summary: "MEDIUM: Compliance score degraded"
+          description: "Compliance score: {{ $value }}% (threshold: 95%)"
+          dashboard: "http://grafana:3000/d/compliance-dashboard"
+
+      - alert: HighAlertVolume
+        expr: rate(falco_alerts_total[5m]) > 10
+        for: 10m
+        labels:
+          severity: medium
+          team: security
+        annotations:
+          summary: "MEDIUM: High alert volume detected"
+          description: "Alert rate: {{ $value }} alerts/sec (expected < 10/sec)"
+          action: "Review Falco rules for false positives"
+
+      - alert: ElasticsearchDiskUsageHigh
+        expr: (elasticsearch_fs_data_free_bytes / elasticsearch_fs_data_total_bytes) < 0.2
+        for: 15m
+        labels:
+          severity: medium
+          team: platform
+        annotations:
+          summary: "MEDIUM: Elasticsearch disk usage > 80%"
+          description: "Free disk space: {{ $value }}% remaining"
+          action: "Enable log retention policies or expand storage"
+
+      - alert: PrometheusTargetDown
+        expr: up{job=~"falco|elasticsearch|kibana"} == 0
+        for: 5m
+        labels:
+          severity: medium
+          team: platform
+        annotations:
+          summary: "MEDIUM: {{ $labels.job }} target is down"
+          description: "Target {{ $labels.instance }} has been down for 5 minutes"
+          action: "Check service health and restart if needed"
+
+      # ============================================================
+      # WARNING Alerts
+      # ============================================================
+
+      - alert: HighMemoryUsage
+        expr: >
+          (container_memory_usage_bytes{name=~"elasticsearch|kibana|prometheus|grafana"} /
+           container_spec_memory_limit_bytes) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "WARNING: {{ $labels.name }} memory usage high"
+          description: "Memory usage: {{ $value | humanizePercentage }}"
+
+      - alert: HighCPUUsage
+        expr: >
+          (rate(container_cpu_usage_seconds_total{name=~"falco|elasticsearch"}[5m]) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "WARNING: {{ $labels.name }} CPU usage high"
+          description: "CPU usage: {{ $value | humanize }}%"
+
+      - alert: FalcoRuleErrorRate
+        expr: rate(falco_rule_load_errors_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "WARNING: Falco rule loading errors detected"
+          description: "Error rate: {{ $value }} errors/sec"
+          action: "Check Falco rules configuration"
+
+      - alert: ContainerRestartingFrequently
+        expr: rate(container_last_seen{name="sample-app"}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "WARNING: {{ $labels.name }} restarting frequently"
+          description: "Restart rate: {{ $value | humanize }}/sec"
+          action: "Check container logs for errors"
+
+      # ============================================================
+      # INFO Alerts (Low Priority)
+      # ============================================================
+
+      - alert: FalcoAlertLatencyHigh
+        expr: histogram_quantile(0.95, falco_alert_latency_ms) > 100
+        for: 15m
+        labels:
+          severity: info
+          team: platform
+        annotations:
+          summary: "INFO: Falco detection latency elevated"
+          description: "95th percentile latency: {{ $value }}ms (threshold: 100ms)"
+
+      - alert: LogIngestionRateLow
+        expr: rate(elasticsearch_indices_docs_total[5m]) < 100
+        for: 30m
+        labels:
+          severity: info
+          team: platform
+        annotations:
+          summary: "INFO: Low log ingestion rate"
+          description: "Logs per second: {{ $value }}"
+          action: "Verify Falco and Filebeat are running"
+
+  # ============================================================
+  # Availability Monitoring
+  # ============================================================
+
+  - name: availability
+    interval: 30s
+    rules:
+      - alert: ServiceUnavailable
+        expr: up{job=~"falco|elasticsearch|kibana|prometheus|grafana|alertmanager"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "CRITICAL: {{ $labels.job }} is unavailable"
+          description: "{{ $labels.instance }} has been down for 2 minutes"
+          action: "Immediately restart the service"
+
+      - alert: ServiceDegraded
+        expr: >
+          (probe_duration_seconds{job=~"falco|elasticsearch|kibana"} > 2) or
+          (probe_success{job=~"falco|elasticsearch|kibana"} == 0)
+        for: 5m
+        labels:
+          severity: high
+          team: platform
+        annotations:
+          summary: "HIGH: {{ $labels.job }} performance degraded"
+          description: "Response time or success rate affected"
+
+  # ============================================================
+  # Compliance & Audit
+  # ============================================================
+
+  - name: compliance
+    interval: 1h
+    rules:
+      - alert: ComplianceAuditLogsMissing
+        expr: >
+          (increase(falco_alerts_total[1h]) == 0) and
+          (BOOL on() vector(1) and day_of_week() != 0 and day_of_week() != 6)
+        for: 5m
+        labels:
+          severity: high
+          team: compliance
+        annotations:
+          summary: "HIGH: No security audit logs generated"
+          description: "No Falco alerts in the past hour (expected for active systems)"
+          action: "Verify Falco is running and collecting logs"
+
+      - alert: MissingComplianceContext
+        expr: >
+          (count(falco_alerts_total{compliance_framework=""}) > 0) and
+          (COMPLIANCE_FRAMEWORKS{enabled="true"} != "")
+        for: 1h
+        labels:
+          severity: medium
+          team: compliance
+        annotations:
+          summary: "MEDIUM: Security events missing compliance context"
+          description: "{{ $value }} events without compliance framework tags"
+          action: "Update Falco rules with compliance labels"
+
+  # ============================================================
+  # Security Metrics
+  # ============================================================
+
+  - name: security_metrics
+    interval: 15s
+    rules:
+      - alert: AnomalousProcessBehavior
+        expr: >
+          (abs(rate(falco_alerts_total[5m]) - avg_over_time(rate(falco_alerts_total[5m])[1h:5m])) /
+           (avg_over_time(rate(falco_alerts_total[5m])[1h:5m]) + 0.001)) > 2
+        for: 10m
+        labels:
+          severity: medium
+          team: security
+        annotations:
+          summary: "MEDIUM: Anomalous process behavior detected"
+          description: "Alert rate deviation: {{ $value | humanize }}x from baseline"
+          action: "Investigate unusual security events"
+
+      - alert: SuspiciousPrivilegePattern
+        expr: >
+          (increase(falco_alerts_total{rule=~".*Privilege.*"}[1h])) >
+          (avg_over_time(increase(falco_alerts_total{rule=~".*Privilege.*"}[1h])[7d:1h]) * 1.5)
+        for: 30m
+        labels:
+          severity: high
+          team: security
+        annotations:
+          summary: "HIGH: Suspicious privilege escalation pattern"
+          description: "Elevation attempts above historical baseline"
+          dashboard: "http://grafana:3000/d/privilege-analysis"

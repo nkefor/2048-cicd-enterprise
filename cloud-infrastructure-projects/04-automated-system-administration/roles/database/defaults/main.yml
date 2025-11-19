@@ -1,0 +1,31 @@
+---
+# Database role defaults
+
+database_type: mysql
+database_port: 3306
+backup_retention_days: 30
+enable_mysql_backup: false
+enable_postgresql_backup: false
+backup_user_password: "backup123"
+
+# MySQL specific
+mysql_root_password: "root123"
+mysql_bind_address: "127.0.0.1"
+mysql_max_connections: 1000
+
+# PostgreSQL specific
+postgresql_version: "14"
+postgresql_listen_addresses: "localhost"
+postgresql_max_connections: 200
+
+# Application database
+app_database: "app_db"
+app_db_user: "app_user"
+app_db_password: "apppass123"
+
+# Allowed hosts
+db_allowed_hosts:
+  - "10.0.0.0/8"
+  - "127.0.0.1"
+
+enable_firewall: true

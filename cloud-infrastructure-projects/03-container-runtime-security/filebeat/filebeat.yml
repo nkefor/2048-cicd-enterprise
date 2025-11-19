@@ -1,0 +1,183 @@
+# Filebeat Configuration - Ships Falco logs to Elasticsearch
+
+filebeat.config:
+  modules:
+    path: ${path.config}/modules.d/*.yml
+    reload.enabled: false
+
+filebeat.inputs:
+  # Falco JSON alerts
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/falco/alerts.json
+    json.keys_under_root: true
+    json.add_error_key: true
+    fields:
+      log_type: falco_alerts
+      source: falco
+    processors:
+      - add_host_metadata:
+          when.not.regexp:
+            getHostname: "^foobar"
+      - add_docker_metadata: ~
+      - add_kubernetes_metadata: ~
+      - timestamp:
+          field: time
+          layouts:
+            - '2006-01-02T15:04:05.999999-07:00'
+            - '2006-01-02T15:04:05.999999'
+      - script:
+          lang: javascript
+          source: >
+            function process(event) {
+              var msg = event.Get("message");
+              if (msg != null && typeof msg === 'string') {
+                var parts = msg.split(":");
+                if (parts.length >= 2) {
+                  event.Put("priority", parts[0].trim());
+                  event.Put("alert_message", parts.slice(1).join(":").trim());
+                }
+              }
+              return event;
+            }
+
+  # Docker logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/lib/docker/containers/*/*-json.log
+    json.keys_under_root: true
+    json.add_error_key: true
+    fields:
+      log_type: docker_logs
+      source: docker
+    processors:
+      - add_docker_metadata: ~
+      - timestamp:
+          field: time
+          layouts:
+            - '2006-01-02T15:04:05.999999999Z07:00'
+
+  # System logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/syslog
+      - /var/log/messages
+    fields:
+      log_type: system_logs
+      source: syslog
+    exclude_lines: ["^\\s*$"]
+    processors:
+      - add_host_metadata: ~
+
+# ============================================================
+# Output Configuration
+# ============================================================
+
+output.elasticsearch:
+  hosts: ["${ELASTICSEARCH_HOST:elasticsearch}:${ELASTICSEARCH_PORT:9200}"]
+  protocol: "http"
+  index: "falco-%{+yyyy.MM.dd}"
+
+  # Optional: Elasticsearch security
+  username: "${ELASTICSEARCH_USERNAME:elastic}"
+  password: "${ELASTICSEARCH_PASSWORD:changeme}"
+
+  # Bulk API settings
+  bulk_max_size: 2048
+  flush_interval: 10s
+
+  # Connection settings
+  timeout: 30s
+  keep_alive: 45s
+
+  # Backoff settings
+  max_retries: 3
+  backoff.init: 1s
+  backoff.max: 60s
+
+# ============================================================
+# Logging Configuration
+# ============================================================
+
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0640
+  interval: daily
+  rotateonstartup: true
+
+# ============================================================
+# Shipper Configuration
+# ============================================================
+
+shipper:
+  name: falco-filebeat
+  tags: ["container-security", "falco", "production"]
+
+# ============================================================
+# Processors
+# ============================================================
+
+processors:
+  # Add cloud metadata
+  - cloud:
+      provider: auto
+
+  # Add host metadata
+  - add_host_metadata: ~
+
+  # Add docker metadata
+  - add_docker_metadata: ~
+
+  # Add kubernetes metadata
+  - add_kubernetes_metadata: ~
+
+# ============================================================
+# HTTP Server (for monitoring)
+# ============================================================
+
+http.enabled: true
+http.host: 0.0.0.0
+http.port: 5066
+
+# ============================================================
+# Monitoring
+# ============================================================
+
+xpack.monitoring.enabled: true
+xpack.monitoring.elasticsearch:
+  hosts: ["${ELASTICSEARCH_HOST:elasticsearch}:${ELASTICSEARCH_PORT:9200}"]
+  username: "${ELASTICSEARCH_USERNAME:elastic}"
+  password: "${ELASTICSEARCH_PASSWORD:changeme}"
+
+# ============================================================
+# Data Enrichment (Enhancement with additional context)
+# ============================================================
+
+fields:
+  cluster_name: production
+  environment: production
+  application: container-runtime-security
+  team: security
+  component: falco
+
+fields_under_root: true
+
+# ============================================================
+# Module Configuration
+# ============================================================
+
+filebeat.modules:
+  - module: system
+    syslog:
+      enabled: true
+      var.paths: ["/var/log/syslog", "/var/log/messages"]
+    auth:
+      enabled: true
+      var.paths: ["/var/log/auth.log"]

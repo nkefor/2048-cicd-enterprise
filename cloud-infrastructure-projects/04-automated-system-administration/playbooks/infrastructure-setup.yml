@@ -1,0 +1,410 @@
+---
+# Playbook: Infrastructure Setup
+# Purpose: Complete server provisioning and configuration
+# Author: DevOps Team
+# Version: 1.0.0
+# Last Updated: 2025-11-19
+
+- name: Infrastructure Setup and Provisioning
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Validate inventory
+      assert:
+        that:
+          - inventory_hostname is defined
+          - ansible_host is defined
+        fail_msg: "Invalid inventory configuration"
+      tags: always
+
+    - name: Update system packages cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+      tags: always
+
+    - name: Update system packages cache (RedHat)
+      yum:
+        update_cache: yes
+      when: ansible_os_family == "RedHat"
+      tags: always
+
+  roles:
+    - name: common
+      tags: common
+
+  tasks:
+    # System Configuration
+    - name: Set hostname
+      hostname:
+        name: "{{ inventory_hostname }}"
+        use: systemd
+      tags: system
+
+    - name: Configure timezone
+      timezone:
+        name: "{{ system_timezone | default('UTC') }}"
+      tags: system
+
+    - name: Update system hostname in /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.0\.1'
+        line: "127.0.0.1\t{{ inventory_hostname }}\tlocalhost"
+      tags: system
+
+    # Networking Configuration
+    - name: Configure DNS resolvers
+      copy:
+        content: |
+          nameserver {{ dns_servers[0] }}
+          {% for dns in dns_servers[1:] %}
+          nameserver {{ dns }}
+          {% endfor %}
+        dest: /etc/resolv.conf
+        backup: yes
+      when: dns_servers is defined
+      tags: network
+
+    - name: Enable IP forwarding
+      sysctl:
+        name: net.ipv4.ip_forward
+        value: '1'
+        sysctl_set: yes
+        state: present
+      tags: network
+
+    # User Management
+    - name: Create service users
+      user:
+        name: "{{ item.username }}"
+        shell: "{{ item.shell | default('/bin/bash') }}"
+        home: "{{ item.home | default(omit) }}"
+        system: yes
+        createhome: yes
+        state: present
+      loop: "{{ service_users | default([]) }}"
+      tags: users
+
+    - name: Configure sudo for service users
+      lineinfile:
+        path: /etc/sudoers.d/{{ item.username }}
+        line: "{{ item.username }} ALL=(ALL) NOPASSWD: {{ item.commands | default('ALL') }}"
+        create: yes
+        mode: '0440'
+      loop: "{{ service_users | default([]) }}"
+      when: item.sudo | default(false)
+      tags: users
+
+    # SSH Configuration
+    - name: Deploy SSH public keys
+      authorized_key:
+        user: "{{ item.username }}"
+        key: "{{ item.ssh_key }}"
+        state: present
+        exclusive: yes
+      loop: "{{ ssh_users | default([]) }}"
+      tags: ssh
+
+    - name: Harden SSH configuration
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?{{ item.key }}"
+        line: "{{ item.key }} {{ item.value }}"
+        state: present
+      loop:
+        - { key: 'PermitRootLogin', value: 'no' }
+        - { key: 'PasswordAuthentication', value: 'no' }
+        - { key: 'PubkeyAuthentication', value: 'yes' }
+        - { key: 'X11Forwarding', value: 'no' }
+        - { key: 'MaxAuthTries', value: '3' }
+        - { key: 'ClientAliveInterval', value: '300' }
+        - { key: 'ClientAliveCountMax', value: '2' }
+      notify: Restart SSH
+      tags: ssh
+
+    # Filesystem Configuration
+    - name: Create required directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /opt/applications
+        - /opt/scripts
+        - /opt/logs
+        - /var/backups
+        - /etc/ansible/facts.d
+      tags: filesystem
+
+    - name: Create swap file
+      block:
+        - name: Create swap file
+          command: fallocate -l {{ swap_size | default('2G') }} /swapfile
+          creates: /swapfile
+          tags: swap
+
+        - name: Set swap permissions
+          file:
+            path: /swapfile
+            mode: '0600'
+          tags: swap
+
+        - name: Enable swap
+          command: swapon /swapfile
+          when: ansible_swaptotal_mb == 0
+          tags: swap
+
+        - name: Make swap persistent
+          lineinfile:
+            path: /etc/fstab
+            line: '/swapfile none swap sw 0 0'
+            state: present
+          tags: swap
+      tags: filesystem
+
+    # Package Management
+    - name: Install base packages
+      apt:
+        name: "{{ base_packages }}"
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+      tags: packages
+
+    - name: Install base packages (RedHat)
+      yum:
+        name: "{{ base_packages }}"
+        state: present
+      when: ansible_os_family == "RedHat"
+      tags: packages
+
+    # Logging Configuration
+    - name: Configure rsyslog
+      copy:
+        content: |
+          # /etc/rsyslog.d/99-custom.conf
+          # Send all logs to centralized server
+          {% if syslog_server is defined %}
+          *.* @@{{ syslog_server }}:{{ syslog_port | default('514') }}
+          {% endif %}
+
+          # Keep local logs
+          *.*;auth,authpriv.none -/var/log/syslog
+          auth,authpriv.* /var/log/auth.log
+        dest: /etc/rsyslog.d/99-custom.conf
+      notify: Restart rsyslog
+      tags: logging
+
+    # Performance Tuning
+    - name: Configure system limits
+      lineinfile:
+        path: /etc/security/limits.conf
+        line: "{{ item }}"
+        state: present
+      loop:
+        - "* soft nofile 65536"
+        - "* hard nofile 65536"
+        - "* soft nproc 32768"
+        - "* hard nproc 32768"
+      tags: performance
+
+    # NTP/Chrony Configuration
+    - name: Install chrony for time synchronization
+      apt:
+        name: chrony
+        state: present
+      when: ansible_os_family == "Debian"
+      tags: time
+
+    - name: Configure chrony
+      copy:
+        content: |
+          pool {{ ntp_servers[0] }} iburst
+          {% for ntp in ntp_servers[1:] %}
+          server {{ ntp }} iburst
+          {% endfor %}
+
+          # Allow local clients
+          allow 127.0.0.1/8
+          allow ::1
+
+          # Make system clock step automatically if needed
+          makestep 1.0 3
+
+          # Enable hardware RTC
+          rtcsync
+        dest: /etc/chrony/chrony.conf
+        backup: yes
+      notify: Restart chrony
+      tags: time
+
+    # Kernel Parameters
+    - name: Configure kernel parameters for performance
+      sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        sysctl_set: yes
+        state: present
+      loop:
+        - { key: 'net.core.somaxconn', value: '65535' }
+        - { key: 'net.ipv4.tcp_max_syn_backlog', value: '65535' }
+        - { key: 'net.ipv4.tcp_tw_reuse', value: '1' }
+        - { key: 'net.ipv4.tcp_fin_timeout', value: '30' }
+        - { key: 'vm.swappiness', value: '10' }
+      tags: kernel
+
+    # Cron Jobs for Maintenance
+    - name: Configure weekly system updates
+      cron:
+        name: "Weekly system updates"
+        weekday: "0"
+        hour: "2"
+        minute: "0"
+        job: "/usr/bin/apt-get update && /usr/bin/apt-get upgrade -y >> /var/log/cron-updates.log 2>&1"
+        user: root
+      when: enable_auto_updates | default(false)
+      tags: cron
+
+    - name: Configure log rotation
+      copy:
+        content: |
+          /var/log/syslog
+          /var/log/auth.log
+          /var/log/cron-updates.log
+          {
+              weekly
+              rotate 4
+              compress
+              delaycompress
+              missingok
+              notifempty
+              create 0640 syslog adm
+              sharedscripts
+              postrotate
+                  /usr/lib/rsyslog/rsyslog-rotate
+              endscript
+          }
+        dest: /etc/logrotate.d/custom
+      tags: logging
+
+    # Monitoring Agent Installation
+    - name: Create monitoring facts
+      copy:
+        content: |
+          {
+            "infrastructure_setup_completed": true,
+            "setup_timestamp": "{{ ansible_date_time.iso8601 }}",
+            "managed_by": "ansible",
+            "infrastructure_version": "1.0.0"
+          }
+        dest: /etc/ansible/facts.d/infrastructure.fact
+      tags: monitoring
+
+  handlers:
+    - name: Restart SSH
+      service:
+        name: ssh
+        state: restarted
+        enabled: yes
+      tags: ssh
+
+    - name: Restart rsyslog
+      service:
+        name: rsyslog
+        state: restarted
+        enabled: yes
+      tags: logging
+
+    - name: Restart chrony
+      service:
+        name: chrony
+        state: restarted
+        enabled: yes
+      tags: time
+
+  post_tasks:
+    - name: Verify infrastructure setup
+      assert:
+        that:
+          - ansible_os_family in ['Debian', 'RedHat']
+          - ansible_python_version is version('3.6', '>=')
+        fail_msg: "Infrastructure setup verification failed"
+      tags: always
+
+    - name: Generate setup report
+      copy:
+        content: |
+          Infrastructure Setup Report
+          =============================
+          Hostname: {{ inventory_hostname }}
+          IP Address: {{ ansible_host }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Kernel: {{ ansible_kernel }}
+          Uptime: {{ ansible_uptime_seconds }} seconds
+
+          System Specifications:
+          - CPU Cores: {{ ansible_processor_vcpus }}
+          - Total Memory: {{ (ansible_memtotal_mb / 1024) | round(2) }} GB
+          - Disk Space: {{ (ansible_mounts[0].size_total / (1024**3)) | round(2) }} GB
+
+          Setup Status: SUCCESS
+          Timestamp: {{ ansible_date_time.iso8601 }}
+        dest: "/tmp/infrastructure-setup-{{ inventory_hostname }}.report"
+      tags: always
+
+    - name: Display completion message
+      debug:
+        msg: |
+          Infrastructure setup completed successfully!
+
+          Next steps:
+          1. Review the setup report
+          2. Run application deployment playbook
+          3. Configure monitoring agents
+          4. Validate system connectivity
+      tags: always
+
+  vars:
+    base_packages:
+      - build-essential
+      - curl
+      - wget
+      - git
+      - vim
+      - htop
+      - net-tools
+      - ntp
+      - chrony
+      - openssh-client
+      - openssh-server
+      - fail2ban
+      - unzip
+      - zip
+      - python3
+      - python3-pip
+      - python3-venv
+      - jq
+      - tree
+      - tmux
+      - screen
+
+    dns_servers:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+
+    ntp_servers:
+      - 0.ubuntu.pool.ntp.org
+      - 1.ubuntu.pool.ntp.org
+      - 2.ubuntu.pool.ntp.org
+      - 3.ubuntu.pool.ntp.org
+
+    system_timezone: UTC
+    swap_size: "2G"
+    enable_auto_updates: false
+    syslog_server: "{{ groups['monitoring'][0] | default(omit) }}"
+    syslog_port: 514
