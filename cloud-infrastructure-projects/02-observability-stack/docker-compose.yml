@@ -1,0 +1,298 @@
+version: '3.9'
+
+networks:
+  observability:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  jaeger_data:
+  postgres_data:
+  redis_data:
+
+services:
+  # Prometheus - Metrics collection and storage
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    networks:
+      - observability
+    labels:
+      - "com.docker.compose.project=observability-stack"
+
+  # AlertManager - Alert routing and notifications
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: alertmanager
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./config/alertmanager:/etc/alertmanager
+    networks:
+      - observability
+    labels:
+      - "com.docker.compose.project=observability-stack"
+
+  # Grafana - Visualization and dashboards
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - observability
+    depends_on:
+      - prometheus
+      - loki
+      - jaeger-query
+    labels:
+      - "com.docker.compose.project=observability-stack"
+
+  # Jaeger All-in-One - Distributed tracing
+  jaeger-all-in-one:
+    image: jaegertracing/all-in-one:1.52
+    container_name: jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # Collector HTTP
+      - "14250:14250"  # Collector gRPC
+      - "6831:6831/udp"  # Agent UDP
+      - "6832:6832/udp"  # Agent UDP
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - observability
+    labels:
+      - "com.docker.compose.project=observability-stack"
+
+  # Jaeger Query Service (for Grafana integration)
+  jaeger-query:
+    image: jaegertracing/jaeger-query:1.52
+    container_name: jaeger-query
+    restart: unless-stopped
+    ports:
+      - "16687:16686"
+    environment:
+      - SPAN_STORAGE_TYPE=memory
+    networks:
+      - observability
+    depends_on:
+      - jaeger-all-in-one
+    labels:
+      - "com.docker.compose.project=observability-stack"
+
+  # Loki - Log aggregation
+  loki:
+    image: grafana/loki:2.9.3
+    container_name: loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/loki.yml
+    volumes:
+      - ./config/loki:/etc/loki
+      - loki_data:/loki
+    networks:
+      - observability
+    labels:
+      - "com.docker.compose.project=observability-stack"
+
+  # Promtail - Log shipping agent
+  promtail:
+    image: grafana/promtail:2.9.3
+    container_name: promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail.yml
+    volumes:
+      - ./config/promtail:/etc/promtail
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    networks:
+      - observability
+    depends_on:
+      - loki
+    labels:
+      - "com.docker.compose.project=observability-stack"
+
+  # Node Exporter - Host metrics
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: node-exporter
+    restart: unless-stopped
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - observability
+    labels:
+      - "com.docker.compose.project=observability-stack"
+
+  # cAdvisor - Container metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cadvisor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - observability
+    labels:
+      - "com.docker.compose.project=observability-stack"
+
+  # Sample Application - API Service (instrumented with OpenTelemetry)
+  sample-api:
+    build:
+      context: ./sample-apps/api-service
+      dockerfile: Dockerfile
+    container_name: sample-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PROMETHEUS_METRICS=true
+      - JAEGER_AGENT_HOST=jaeger-all-in-one
+      - JAEGER_AGENT_PORT=6831
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/sampledb
+      - REDIS_URL=redis://redis:6379/0
+    networks:
+      - observability
+    depends_on:
+      - prometheus
+      - jaeger-all-in-one
+      - postgres
+      - redis
+    labels:
+      - "com.docker.compose.project=observability-stack"
+
+  # PostgreSQL - Sample database
+  postgres:
+    image: postgres:15.5-alpine
+    container_name: postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=sampledb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - observability
+    labels:
+      - "com.docker.compose.project=observability-stack"
+
+  # PostgreSQL Exporter - Database metrics
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: postgres-exporter
+    restart: unless-stopped
+    ports:
+      - "9187:9187"
+    environment:
+      - DATA_SOURCE_NAME=postgresql://postgres:postgres@postgres:5432/sampledb?sslmode=disable
+    networks:
+      - observability
+    depends_on:
+      - postgres
+    labels:
+      - "com.docker.compose.project=observability-stack"
+
+  # Redis - Sample cache
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - observability
+    labels:
+      - "com.docker.compose.project=observability-stack"
+
+  # Redis Exporter - Cache metrics
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.55.0
+    container_name: redis-exporter
+    restart: unless-stopped
+    ports:
+      - "9121:9121"
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    networks:
+      - observability
+    depends_on:
+      - redis
+    labels:
+      - "com.docker.compose.project=observability-stack"
+
+  # Load Generator - Simulates traffic for demo
+  load-generator:
+    build:
+      context: ./sample-apps/load-generator
+      dockerfile: Dockerfile
+    container_name: load-generator
+    restart: unless-stopped
+    environment:
+      - TARGET_URL=http://sample-api:8000
+      - REQUESTS_PER_SECOND=10
+      - DURATION_SECONDS=3600
+    networks:
+      - observability
+    depends_on:
+      - sample-api
+    labels:
+      - "com.docker.compose.project=observability-stack"

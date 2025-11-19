@@ -1,0 +1,89 @@
+# Service-level alerting rules
+groups:
+  - name: service_alerts
+    interval: 30s
+    rules:
+      # High error rate alert
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m])) by (service)
+            /
+            sum(rate(http_requests_total[5m])) by (service)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          team: sre
+        annotations:
+          summary: "High error rate on {{ $labels.service }}"
+          description: "{{ $labels.service }} has an error rate of {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      # High latency alert
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le)
+          ) > 1.0
+        for: 10m
+        labels:
+          severity: warning
+          team: sre
+        annotations:
+          summary: "High latency on {{ $labels.service }}"
+          description: "{{ $labels.service }} P95 latency is {{ $value | humanizeDuration }} (threshold: 1s)"
+
+      # Service down alert
+      - alert: ServiceDown
+        expr: up{job=~"sample-api|postgres|redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: sre
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.job }} has been down for more than 1 minute"
+
+      # High request rate
+      - alert: HighRequestRate
+        expr: |
+          sum(rate(http_requests_total[5m])) by (service) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+        annotations:
+          summary: "High request rate on {{ $labels.service }}"
+          description: "{{ $labels.service }} is receiving {{ $value | humanize }} requests/second"
+
+      # API response time degradation
+      - alert: APIResponseTimeDegradation
+        expr: |
+          (
+            histogram_quantile(0.95,
+              sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le)
+            )
+            /
+            histogram_quantile(0.95,
+              sum(rate(http_request_duration_seconds_bucket[1h] offset 1d)) by (service, le)
+            )
+          ) > 1.5
+        for: 15m
+        labels:
+          severity: warning
+          team: sre
+        annotations:
+          summary: "API response time degradation on {{ $labels.service }}"
+          description: "{{ $labels.service }} P95 latency is 50% slower than yesterday (current: {{ $value }}x)"
+
+      # Service restart frequency
+      - alert: FrequentRestarts
+        expr: |
+          changes(process_start_time_seconds[15m]) > 2
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+        annotations:
+          summary: "Frequent restarts detected for {{ $labels.service }}"
+          description: "{{ $labels.service }} has restarted {{ $value }} times in the last 15 minutes"

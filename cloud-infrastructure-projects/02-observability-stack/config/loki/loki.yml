@@ -1,0 +1,98 @@
+auth_enabled: false
+
+ingester:
+  chunk_idle_period: 3m
+  chunk_retain_period: 1m
+  max_chunk_age: 1h
+  max_streams_per_user: 10000
+  max_global_streams_per_user: 20000
+
+limits_config:
+  enforce_metric_name: false
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h
+  ingestion_rate_mb: 50
+  ingestion_burst_size_mb: 100
+  rate_limit_enabled: true
+  rate_limit_requests_per_second: 1000
+  cardinality_limit: 100000
+  max_cache_freshness_per_query: 10m
+  split_queries_by_interval: 24h
+  retention_period: 30d
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v12
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config:
+  filesystem:
+    directory: /loki/chunks
+  index_cache_validity: 5m
+  cache_config:
+    enable_fifocache: true
+    default_validity: 1h
+    background:
+      writeback_goroutines: 10
+      writeback_interval: 1s
+
+chunk_store_config:
+  max_look_back_period: 0s
+
+table_manager:
+  retention_deletes_enabled: true
+  retention_period: 720h
+  poll_interval: 10m
+
+querier:
+  max_concurrent: 20
+  query_ingesters_within: 3h
+  query_timeout: 30m
+  engine:
+    timeout: 30m
+    max_cache_freshness_per_query: 10m
+
+query_range:
+  align_queries_with_step: true
+  max_retries: 5
+  cache_results: true
+  results_cache:
+    cache:
+      enable_fifocache: true
+      default_validity: 1h
+      memcached_client:
+        batch_size: 1024
+        parallelism: 100
+
+server:
+  http_listen_port: 3100
+  http_server_read_timeout: 600s
+  http_server_write_timeout: 600s
+  grpc_server_max_recv_msg_size: 67108864
+  grpc_server_max_send_msg_size: 67108864
+  log_level: info
+
+distributor:
+  rate_limit_enabled: true
+  rate_limit_requests_per_second: 1000
+
+runtime_config:
+  period: 10s
+  file: /etc/loki/runtime.yml
+
+memberlist:
+  node_name: loki
+  bind_port: 7946
+  dead_node_reclaim_time: 30s
+  retransmit_factor: 4
+  tcp_timeout: 10s
+  gossip_interval: 1s
+  gossip_nodes: 3
+  gossip_to_dead_nodes_count: 3
+  dead_node_reclaim_time: 30s
+  stream_timeout: 10s

@@ -1,0 +1,214 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: info
+
+positions:
+  filename: /tmp/positions.yaml
+  sync_period: 10s
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    tenant_id: ''
+    batchwait: 1s
+    batchsize: 1048576
+    timeout: 30s
+
+scrape_configs:
+  # Docker container logs
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        port: 2375
+        refresh_interval: 5s
+        filters:
+          - name: status
+            values:
+              - running
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        target_label: container_name
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: service
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        target_label: project
+      - source_labels: ['__meta_docker_container_id']
+        target_label: container_id
+        regex: '(.{12}).*'
+        replacement: '${1}'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: stream
+    pipeline_stages:
+      - docker: {}
+      - json:
+          expressions:
+            level: level
+            message: message
+            timestamp: '@timestamp'
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02T15:04:05.000Z07:00'
+      - labels:
+          level:
+          message:
+      - logfmt:
+          mapping:
+            time:
+            level:
+            msg:
+            caller:
+      - pack:
+          labels:
+            - level
+            - service
+            - container_name
+
+  # System logs from /var/log
+  - job_name: syslog
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: syslog
+          __path__: /var/log/*.log
+    pipeline_stages:
+      - multiline:
+          line_splitter: '\n'
+          max_lines: 128
+          max_wait_time: 3s
+      - regex:
+          expression: '^(?P<time>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.*?)? ?(?P<message>.*)'
+      - timestamp:
+          source: time
+          format: '2006-01-02 15:04:05'
+      - labels:
+          job:
+      - output:
+          source: message
+
+  # Application logs (JSON format)
+  - job_name: app-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: app
+          __path__: /var/log/app/*.log
+    pipeline_stages:
+      - multiline:
+          line_splitter: '\n'
+          max_lines: 256
+          max_wait_time: 5s
+      - json:
+          expressions:
+            timestamp: '@timestamp'
+            level: level
+            logger: logger_name
+            message: message
+            trace_id: trace_id
+            span_id: span_id
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02T15:04:05.000Z07:00'
+      - labels:
+          level:
+          logger:
+          trace_id:
+          span_id:
+      - output:
+          source: message
+
+  # Prometheus logs
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: prometheus
+          __path__: /var/log/prometheus/*.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<time>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*?)? ?(?P<level>\w+)? ?(?P<message>.*)'
+      - timestamp:
+          source: time
+          format: '2006-01-02T15:04:05.000Z07:00'
+      - labels:
+          job:
+          level:
+      - output:
+          source: message
+
+  # Alert manager logs
+  - job_name: alertmanager
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: alertmanager
+          __path__: /var/log/alertmanager/*.log
+    pipeline_stages:
+      - regex:
+          expression: '^level=(?P<level>\w+)\s+ts=(?P<time>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*?)\s+(?P<message>.*)'
+      - timestamp:
+          source: time
+          format: '2006-01-02T15:04:05.000Z07:00'
+      - labels:
+          job:
+          level:
+      - output:
+          source: message
+
+  # Grafana logs
+  - job_name: grafana
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: grafana
+          __path__: /var/log/grafana/*.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<time>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}).*?\s+(?P<level>\w+)\s+(?P<message>.*)'
+      - timestamp:
+          source: time
+          format: '2006/01/02 15:04:05'
+      - labels:
+          job:
+          level:
+      - output:
+          source: message
+
+  # Sample API logs
+  - job_name: sample-api
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: sample-api
+          service: api
+          __path__: /var/log/sample-api/*.log
+    pipeline_stages:
+      - json:
+          expressions:
+            timestamp: timestamp
+            level: level
+            message: message
+            trace_id: trace_id
+            span_id: span_id
+            service: service
+            path: path
+            method: method
+            status: status
+            duration: duration_ms
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02T15:04:05.000Z07:00'
+      - labels:
+          level:
+          service:
+          path:
+          method:
+          status:
+          trace_id:
+      - output:
+          source: message

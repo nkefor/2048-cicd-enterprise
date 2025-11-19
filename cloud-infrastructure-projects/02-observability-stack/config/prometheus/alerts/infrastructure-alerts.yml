@@ -1,0 +1,100 @@
+# Infrastructure-level alerting rules
+groups:
+  - name: infrastructure_alerts
+    interval: 30s
+    rules:
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value | humanize }}% (threshold: 80%)"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanize }}% (threshold: 85%)"
+
+      # Critical memory usage
+      - alert: CriticalMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 95
+        for: 5m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "Critical memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanize }}% (threshold: 95%)"
+
+      # Disk space low
+      - alert: DiskSpaceLow
+        expr: |
+          (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs|squashfs|vfat"} / node_filesystem_size_bytes)) * 100 > 80
+        for: 15m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}:{{ $labels.mountpoint }}"
+          description: "Disk usage is {{ $value | humanize }}% (threshold: 80%)"
+
+      # Critical disk space
+      - alert: CriticalDiskSpace
+        expr: |
+          (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs|squashfs|vfat"} / node_filesystem_size_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "Critical disk space on {{ $labels.instance }}:{{ $labels.mountpoint }}"
+          description: "Disk usage is {{ $value | humanize }}% (threshold: 90%)"
+
+      # Container CPU throttling
+      - alert: ContainerCPUThrottling
+        expr: |
+          rate(container_cpu_cfs_throttled_seconds_total[5m]) > 0.3
+        for: 10m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "Container {{ $labels.name }} is being CPU throttled"
+          description: "Container is throttled {{ $value | humanizePercentage }} of the time"
+
+      # Container memory pressure
+      - alert: ContainerMemoryPressure
+        expr: |
+          (container_memory_usage_bytes / container_spec_memory_limit_bytes) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "Container {{ $labels.name }} has high memory usage"
+          description: "Container memory usage is {{ $value | humanize }}% of limit"
+
+      # Node load average high
+      - alert: HighLoadAverage
+        expr: |
+          node_load15 / count(node_cpu_seconds_total{mode="idle"}) without(cpu, mode) > 1.5
+        for: 15m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "High load average on {{ $labels.instance }}"
+          description: "15-minute load average is {{ $value | humanize }} (normalized by CPU count)"
