@@ -84,18 +84,80 @@ jobs:
       - name: Get ALB endpoint
         id: get-endpoint
         run: |
-          # Get the ALB DNS name from ECS service (if available)
-          # For now, we'll use a placeholder - update with your ALB DNS
-          echo "endpoint=http://your-alb-endpoint.us-east-1.elb.amazonaws.com" >> $GITHUB_OUTPUT
+          # Get the target group ARN from ECS service
+          TARGET_GROUP_ARN=$(aws ecs describe-services \
+            --cluster game-2048 \
+            --services game-2048 \
+            --region ${{ env.AWS_REGION }} \
+            --query 'services[0].loadBalancers[0].targetGroupArn' \
+            --output text)
+
+          if [ "$TARGET_GROUP_ARN" != "None" ] && [ -n "$TARGET_GROUP_ARN" ]; then
+            # Get the load balancer ARN from target group
+            LB_ARN=$(aws elbv2 describe-target-groups \
+              --target-group-arns $TARGET_GROUP_ARN \
+              --region ${{ env.AWS_REGION }} \
+              --query 'TargetGroups[0].LoadBalancerArns[0]' \
+              --output text)
+
+            # Get the load balancer DNS name
+            LB_DNS=$(aws elbv2 describe-load-balancers \
+              --load-balancer-arns $LB_ARN \
+              --region ${{ env.AWS_REGION }} \
+              --query 'LoadBalancers[0].DNSName' \
+              --output text)
+
+            echo "endpoint=http://${LB_DNS}" >> $GITHUB_OUTPUT
+            echo "ALB endpoint: http://${LB_DNS}"
+          else
+            echo "No load balancer configured for this service"
+            echo "endpoint=" >> $GITHUB_OUTPUT
+          fi
 
       - name: Post-deployment health check
         run: |
-          # Give the service a moment to fully stabilize
-          sleep 10
+          ENDPOINT="${{ steps.get-endpoint.outputs.endpoint }}"
 
-          # Verify the deployed service is responding
-          # Note: Replace with your actual ALB endpoint
-          echo "Deployment verification complete - service is stable"
+          if [ -n "$ENDPOINT" ]; then
+            echo "Performing health check on: $ENDPOINT"
+
+            # Give the service a moment to fully stabilize
+            sleep 10
+
+            # Retry health check up to 5 times with 10-second intervals
+            MAX_ATTEMPTS=5
+            ATTEMPT=1
+
+            while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+              echo "Health check attempt $ATTEMPT of $MAX_ATTEMPTS..."
+
+              if curl -f -s -o /dev/null -w "%{http_code}" "$ENDPOINT" | grep -q "200"; then
+                echo "✅ Health check passed! Service is responding with HTTP 200"
+
+                # Verify security headers are present
+                echo "Verifying security headers..."
+                curl -I "$ENDPOINT" 2>/dev/null | grep -E "(X-Content-Type-Options|X-Frame-Options|X-XSS-Protection)" && \
+                  echo "✅ Security headers verified" || \
+                  echo "⚠️ Warning: Some security headers may be missing"
+
+                exit 0
+              else
+                echo "❌ Health check failed (attempt $ATTEMPT)"
+                if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                  echo "Waiting 10 seconds before retry..."
+                  sleep 10
+                fi
+              fi
+
+              ATTEMPT=$((ATTEMPT + 1))
+            done
+
+            echo "❌ Health check failed after $MAX_ATTEMPTS attempts"
+            exit 1
+          else
+            echo "⚠️ No ALB endpoint configured - skipping health check"
+            echo "Deployment verification complete - service is stable"
+          fi
 
       - name: Set up Node.js for E2E tests
         uses: actions/setup-node@v4
