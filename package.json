@@ -1,0 +1,27 @@
+{
+  "name": "2048-cicd-enterprise-tests",
+  "version": "1.0.0",
+  "description": "Test suite for 2048 CI/CD Enterprise platform",
+  "private": true,
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "test:docker": "bash tests/docker/run-all-tests.sh",
+    "test:load": "k6 run tests/load/k6-load-test.js",
+    "test:all": "npm run test:docker && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  },
+  "keywords": [
+    "testing",
+    "e2e",
+    "docker",
+    "ci-cd",
+    "playwright"
+  ],
+  "author": "",
+  "license": "MIT"
+}
