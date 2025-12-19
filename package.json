@@ -8,12 +8,22 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
+    "test:a11y": "playwright test tests/e2e/accessibility.test.js",
+    "test:visual": "playwright test tests/e2e/visual-regression.test.js",
+    "test:smoke": "playwright test tests/smoke/",
     "test:docker": "bash tests/docker/run-all-tests.sh",
     "test:load": "k6 run tests/load/k6-load-test.js",
-    "test:all": "npm run test:docker && npm run test:e2e"
+    "test:lighthouse": "node tests/performance/lighthouse-ci.js",
+    "test:security": "bash tests/security/penetration-tests.sh",
+    "test:all": "npm run test:docker && npm run test:e2e",
+    "test:coverage": "playwright test --reporter=html --reporter=json"
   },
   "devDependencies": {
-    "@playwright/test": "^1.40.0"
+    "@axe-core/playwright": "^4.8.0",
+    "@playwright/test": "^1.40.0",
+    "chrome-launcher": "^1.1.0",
+    "lighthouse": "^11.4.0",
+    "nyc": "^15.1.0"
   },
   "keywords": [
     "testing",

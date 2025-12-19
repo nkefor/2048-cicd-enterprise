@@ -31,11 +31,19 @@ module.exports = defineConfig({
     // Collect trace on failure
     trace: 'on-first-retry',
 
-    // Screenshot on failure
+    // Screenshot settings (for visual regression)
     screenshot: 'only-on-failure',
 
     // Video on failure
     video: 'retain-on-failure',
+
+    // Visual regression settings
+    expect: {
+      toHaveScreenshot: {
+        maxDiffPixels: 100,
+        threshold: 0.2,
+      },
+    },
   },
 
   // Test projects for different browsers
