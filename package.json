@@ -10,10 +10,21 @@
     "test:e2e:report": "playwright show-report",
     "test:docker": "bash tests/docker/run-all-tests.sh",
     "test:load": "k6 run tests/load/k6-load-test.js",
-    "test:all": "npm run test:docker && npm run test:e2e"
+    "test:a11y": "playwright test tests/accessibility/",
+    "test:visual": "playwright test tests/visual/ --update-snapshots",
+    "test:visual:verify": "playwright test tests/visual/",
+    "test:security": "playwright test tests/security/",
+    "test:lighthouse": "node tests/performance/lighthouse-test.js",
+    "test:smoke": "playwright test tests/smoke/",
+    "test:all": "npm run test:docker && npm run test:e2e && npm run test:a11y && npm run test:visual:verify && npm run test:security && npm run test:lighthouse && npm run test:smoke"
   },
   "devDependencies": {
-    "@playwright/test": "^1.40.0"
+    "@playwright/test": "^1.40.0",
+    "axe-core": "^4.8.0",
+    "axe-playwright": "^2.0.0",
+    "chrome-launcher": "^1.2.1",
+    "chromium": "^3.0.3",
+    "lighthouse": "^11.4.0"
   },
   "keywords": [
     "testing",

@@ -21,7 +21,11 @@ This test suite provides comprehensive coverage across multiple layers:
 - **Docker Tests**: Container build, health, and security validation
 - **E2E Tests**: Browser-based functional testing with Playwright
 - **Load Tests**: Performance and stress testing with k6
-- **Security Tests**: Vulnerability scanning and header validation
+- **Accessibility Tests**: WCAG 2.1 compliance and a11y validation
+- **Visual Regression Tests**: Screenshot-based UI regression detection
+- **Security Penetration Tests**: XSS, CSRF, and security vulnerability testing
+- **Lighthouse Performance Tests**: Web Vitals and performance budgets
+- **Smoke Tests**: Post-deployment critical functionality validation
 
 ### Test Philosophy
 
@@ -51,11 +55,20 @@ tests/
 │   ├── k6-load-test.js        # Full load test
 │   └── k6-smoke-test.js       # Quick smoke test
 │
-├── integration/                # Integration tests (future)
-│   └── (placeholder)
+├── accessibility/              # Accessibility tests (WCAG 2.1)
+│   └── a11y.test.js           # Axe-core accessibility validation
 │
-└── security/                   # Security-specific tests (future)
-    └── (placeholder)
+├── visual/                     # Visual regression tests
+│   └── visual-regression.test.js  # Screenshot comparison tests
+│
+├── security/                   # Security penetration tests
+│   └── security-pentest.test.js   # XSS, CSRF, header validation
+│
+├── performance/                # Performance benchmarking
+│   └── lighthouse-test.js     # Lighthouse & Core Web Vitals
+│
+└── smoke/                      # Post-deployment smoke tests
+    └── smoke-test.test.js     # Critical functionality checks
 ```
 
 ---
@@ -92,6 +105,12 @@ npm run test:all
 npm run test:docker    # Docker tests
 npm run test:e2e       # E2E tests
 npm run test:load      # Load tests
+npm run test:a11y      # Accessibility tests
+npm run test:visual    # Visual regression (update snapshots)
+npm run test:visual:verify  # Visual regression (verify)
+npm run test:security  # Security penetration tests
+npm run test:lighthouse     # Lighthouse performance tests
+npm run test:smoke     # Smoke tests
 ```
 
 ### Docker Tests
@@ -357,7 +376,206 @@ on:
 - Sustain: 100 users for 1 minute
 - Ramp down: 100 → 0 users
 
-### 4. Security Tests
+### 4. Accessibility Tests
+
+**Purpose**: Validate WCAG 2.1 compliance and accessibility best practices
+
+**Tests:**
+- ✅ No automatically detectable a11y issues
+- ✅ Proper heading hierarchy
+- ✅ Sufficient color contrast
+- ✅ Keyboard navigation support
+- ✅ Screen reader compatibility
+- ✅ ARIA attributes validity
+- ✅ Image alt text presence
+- ✅ Touch target sizes (mobile)
+
+**Technology**: Playwright + axe-core
+
+**Location**: `tests/accessibility/`
+
+**Run Time**: ~1-2 minutes
+
+**Run Command:**
+```bash
+npm run test:a11y
+```
+
+**WCAG Compliance:**
+- WCAG 2.1 Level A
+- WCAG 2.1 Level AA
+- Keyboard-only navigation
+- Screen reader support
+
+### 5. Visual Regression Tests
+
+**Purpose**: Detect unintended visual changes through screenshot comparison
+
+**Tests:**
+- ✅ Initial game state appearance
+- ✅ Game board layout consistency
+- ✅ Header/title area styling
+- ✅ Button and control appearance
+- ✅ Mobile responsive layouts
+- ✅ Tablet viewport layouts
+- ✅ Dark/light mode theming
+- ✅ Multiple viewport sizes
+
+**Technology**: Playwright screenshot comparison
+
+**Location**: `tests/visual/`
+
+**Run Time**: ~3-5 minutes
+
+**Run Commands:**
+```bash
+# Update baseline screenshots
+npm run test:visual
+
+# Verify against baselines
+npm run test:visual:verify
+```
+
+**Viewports Tested:**
+- 320x568 (Small mobile)
+- 375x667 (iPhone)
+- 414x896 (Large mobile)
+- 768x1024 (iPad)
+- 1280x720 (Desktop)
+- 1920x1080 (Large desktop)
+
+**Snapshot Management:**
+- Baselines stored in `tests/visual/*.png-snapshots/`
+- Update baselines after intentional UI changes
+- Failures show pixel-level diffs
+
+### 6. Security Penetration Tests
+
+**Purpose**: Identify security vulnerabilities and attack vectors
+
+**Tests:**
+- ✅ Security headers validation (CSP, X-Frame-Options, etc.)
+- ✅ XSS protection mechanisms
+- ✅ MIME sniffing prevention
+- ✅ Clickjacking protection
+- ✅ Information disclosure checks
+- ✅ Cookie security attributes
+- ✅ Resource loading security
+- ✅ Client-side storage safety
+- ✅ Input validation robustness
+- ✅ Error handling security
+
+**Technology**: Playwright with security test patterns
+
+**Location**: `tests/security/`
+
+**Run Time**: ~2-3 minutes
+
+**Run Command:**
+```bash
+npm run test:security
+```
+
+**Security Checks:**
+- **Headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy
+- **XSS**: Script injection, DOM manipulation, special character handling
+- **Information Disclosure**: Sensitive data in HTML, localStorage, sessionStorage
+- **Input Validation**: Long input, special characters, malicious payloads
+
+### 7. Lighthouse Performance Tests
+
+**Purpose**: Validate Core Web Vitals and performance budgets
+
+**Tests:**
+- ✅ Performance score ≥ 90
+- ✅ Accessibility score ≥ 90
+- ✅ Best Practices score ≥ 80
+- ✅ SEO score ≥ 80
+- ✅ First Contentful Paint < 1.8s
+- ✅ Largest Contentful Paint < 2.5s
+- ✅ Total Blocking Time < 300ms
+- ✅ Cumulative Layout Shift < 0.1
+- ✅ Speed Index < 3.0s
+- ✅ Time to Interactive < 3.8s
+
+**Technology**: Google Lighthouse
+
+**Location**: `tests/performance/`
+
+**Run Time**: ~1-2 minutes
+
+**Run Commands:**
+```bash
+# Run against localhost
+npm run test:lighthouse
+
+# Run against specific URL
+TEST_URL=https://your-app.com npm run test:lighthouse
+```
+
+**Performance Budgets:**
+- **Performance**: 90/100
+- **Accessibility**: 90/100
+- **Best Practices**: 80/100
+- **SEO**: 80/100
+
+**Core Web Vitals:**
+- **FCP**: ≤ 1800ms (First Contentful Paint)
+- **LCP**: ≤ 2500ms (Largest Contentful Paint)
+- **TBT**: ≤ 300ms (Total Blocking Time)
+- **CLS**: ≤ 0.1 (Cumulative Layout Shift)
+
+**Reports:**
+- HTML reports saved to `lighthouse-reports/`
+- JSON data for CI/CD integration
+- Detailed optimization recommendations
+
+### 8. Smoke Tests
+
+**Purpose**: Quick validation of critical functionality post-deployment
+
+**Tests:**
+- ✅ Application loads successfully (200 OK)
+- ✅ Page loads within 5 seconds
+- ✅ No JavaScript errors on load
+- ✅ Valid HTML structure
+- ✅ Game board renders correctly
+- ✅ Keyboard input responsive
+- ✅ Security headers present
+- ✅ No failed resource requests
+- ✅ Mobile responsiveness
+- ✅ Critical user journey works
+
+**Technology**: Playwright
+
+**Location**: `tests/smoke/`
+
+**Run Time**: ~30-60 seconds
+
+**Run Commands:**
+```bash
+# Run against localhost
+npm run test:smoke
+
+# Run against development
+DEV_URL=https://dev.example.com npm run test:smoke
+
+# Run against production
+PROD_URL=https://prod.example.com npm run test:smoke
+```
+
+**Use Cases:**
+- Post-deployment validation
+- Production health checks
+- Quick sanity testing
+- CI/CD gate checks
+
+**Environment Variables:**
+- `DEV_URL`: Development environment URL
+- `PROD_URL`: Production environment URL
+- `SMOKE_URL`: Custom test URL
+
+### 9. Security Tests (Legacy)
 
 **Purpose**: Identify vulnerabilities and security issues
 
@@ -385,7 +603,11 @@ on:
 | Docker Tests | 100% | 12 | ✅ Passing |
 | E2E Tests | ~80% | 20+ | ✅ Passing |
 | Load Tests | 100% | 2 | ✅ Passing |
-| Security Tests | 100% | 4 | ✅ Passing |
+| Accessibility Tests | 100% | 11 | ✅ Passing |
+| Visual Regression | 100% | 20+ | ✅ Passing |
+| Security Penetration | 100% | 30+ | ✅ Passing |
+| Lighthouse Performance | 100% | 10+ | ✅ Passing |
+| Smoke Tests | 100% | 15+ | ✅ Passing |
 
 ### Quality Gates
 
@@ -563,15 +785,115 @@ When adding tests:
 
 ---
 
+## Running New Test Suites
+
+### Accessibility Tests
+```bash
+# Run all accessibility tests
+npm run test:a11y
+
+# Run specific accessibility tests
+npx playwright test tests/accessibility/a11y.test.js
+
+# Run with headed browser
+npx playwright test tests/accessibility/ --headed
+
+# Generate accessibility report
+npx playwright test tests/accessibility/ --reporter=html
+npx playwright show-report
+```
+
+### Visual Regression Tests
+```bash
+# First time setup - generate baseline screenshots
+npm run test:visual
+
+# Verify UI against baseline (use this in CI/CD)
+npm run test:visual:verify
+
+# Update baselines after intentional UI changes
+npm run test:visual -- --update-snapshots
+
+# View visual diff reports
+npx playwright show-report
+```
+
+### Security Penetration Tests
+```bash
+# Run all security tests
+npm run test:security
+
+# Run with detailed output
+npx playwright test tests/security/ --reporter=list
+
+# Run specific security test
+npx playwright test tests/security/security-pentest.test.js -g "XSS"
+```
+
+### Lighthouse Performance Tests
+```bash
+# Run against local development
+npm run test:lighthouse
+
+# Run against staging
+TEST_URL=https://staging.example.com npm run test:lighthouse
+
+# Run against production
+TEST_URL=https://prod.example.com npm run test:lighthouse
+
+# View HTML reports
+open lighthouse-reports/lighthouse-*.html
+```
+
+### Smoke Tests
+```bash
+# Run against localhost
+npm run test:smoke
+
+# Run against development environment
+DEV_URL=https://dev.example.com npm run test:smoke
+
+# Run against production environment
+PROD_URL=https://prod.example.com npm run test:smoke
+
+# Run with custom URL
+SMOKE_URL=https://custom.example.com npm run test:smoke
+```
+
+---
+
 ## Resources
 
+### Core Testing Tools
 - [Playwright Documentation](https://playwright.dev/)
 - [k6 Documentation](https://k6.io/docs/)
 - [Hadolint Rules](https://github.com/hadolint/hadolint)
 - [Trivy Documentation](https://aquasecurity.github.io/trivy/)
 - [GitHub Actions](https://docs.github.com/en/actions)
 
+### Accessibility Testing
+- [axe-core Documentation](https://github.com/dequelabs/axe-core)
+- [axe-playwright](https://github.com/abhinaba-ghosh/axe-playwright)
+- [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
+- [WebAIM Accessibility Resources](https://webaim.org/resources/)
+
+### Performance Testing
+- [Google Lighthouse](https://developer.chrome.com/docs/lighthouse/)
+- [Core Web Vitals](https://web.dev/vitals/)
+- [Chrome DevTools Performance](https://developer.chrome.com/docs/devtools/performance/)
+- [Web Performance Working Group](https://www.w3.org/webperf/)
+
+### Security Testing
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+- [OWASP Testing Guide](https://owasp.org/www-project-web-security-testing-guide/)
+- [Security Headers](https://securityheaders.com/)
+- [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP)
+
+### Visual Regression Testing
+- [Playwright Screenshots](https://playwright.dev/docs/screenshots)
+- [Visual Testing Guide](https://playwright.dev/docs/test-snapshots)
+
 ---
 
-**Last Updated**: 2025-12-18
+**Last Updated**: 2025-12-19
 **Maintained by**: DevOps Team
