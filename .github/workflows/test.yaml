@@ -345,10 +345,165 @@ jobs:
           docker rm -f perf-test-container || true
           docker rmi 2048-perf-test || true
 
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests with coverage
+        run: npm run test:unit:coverage
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-coverage
+          path: coverage/
+          retention-days: 30
+
+  integration-tests:
+    name: AWS Integration Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+        continue-on-error: true
+
+      - name: Run AWS integration tests
+        run: npm run test:integration
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        continue-on-error: true
+
+  infrastructure-tests:
+    name: Infrastructure Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Run infrastructure tests
+        run: bash tests/infrastructure/run-all-tests.sh
+
+  seo-tests:
+    name: SEO Tests
+    runs-on: ubuntu-latest
+    needs: docker-tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and run container
+        run: |
+          docker build -t 2048-seo-test ./2048
+          docker run -d -p 8080:80 --name seo-test-container 2048-seo-test
+          sleep 5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run SEO tests
+        run: npx playwright test tests/e2e/seo.test.js --project=chromium
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f seo-test-container || true
+          docker rmi 2048-seo-test || true
+
+  performance-regression-tests:
+    name: Performance Regression Tests
+    runs-on: ubuntu-latest
+    needs: docker-tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and run container
+        run: |
+          docker build -t 2048-perf-regression-test ./2048
+          docker run -d -p 8080:80 --name perf-regression-container 2048-perf-regression-test
+          sleep 5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run performance regression tests
+        run: npx playwright test tests/performance/performance-regression.test.js --project=chromium
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f perf-regression-container || true
+          docker rmi 2048-perf-regression-test || true
+
   test-summary:
     name: Test Summary
     runs-on: ubuntu-latest
-    needs: [lint-and-security, docker-tests, e2e-tests, load-tests, accessibility-tests, visual-regression-tests, security-tests, performance-tests]
+    needs: [lint-and-security, docker-tests, unit-tests, integration-tests, infrastructure-tests, e2e-tests, load-tests, accessibility-tests, visual-regression-tests, security-tests, performance-tests, seo-tests, performance-regression-tests]
     if: always()
 
     steps:
@@ -363,20 +518,28 @@ jobs:
           echo "Results:"
           echo "  - Lint & Security: ${{ needs.lint-and-security.result }}"
           echo "  - Docker Tests: ${{ needs.docker-tests.result }}"
+          echo "  - Unit Tests: ${{ needs.unit-tests.result }}"
+          echo "  - Integration Tests: ${{ needs.integration-tests.result }}"
+          echo "  - Infrastructure Tests: ${{ needs.infrastructure-tests.result }}"
           echo "  - E2E Tests: ${{ needs.e2e-tests.result }}"
           echo "  - Load Tests: ${{ needs.load-tests.result }}"
           echo "  - Accessibility Tests: ${{ needs.accessibility-tests.result }}"
           echo "  - Visual Regression: ${{ needs.visual-regression-tests.result }}"
           echo "  - Security Tests: ${{ needs.security-tests.result }}"
           echo "  - Performance Tests: ${{ needs.performance-tests.result }}"
+          echo "  - SEO Tests: ${{ needs.seo-tests.result }}"
+          echo "  - Performance Regression: ${{ needs.performance-regression-tests.result }}"
           echo ""
 
       - name: Fail if any critical tests failed
         if: |
           needs.lint-and-security.result != 'success' ||
           needs.docker-tests.result != 'success' ||
+          needs.unit-tests.result != 'success' ||
+          needs.infrastructure-tests.result != 'success' ||
           needs.e2e-tests.result != 'success' ||
           needs.load-tests.result != 'success' ||
           needs.accessibility-tests.result != 'success' ||
-          needs.security-tests.result != 'success'
+          needs.security-tests.result != 'success' ||
+          needs.seo-tests.result != 'success'
         run: exit 1
