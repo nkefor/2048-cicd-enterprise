@@ -16,7 +16,12 @@
     "test:lighthouse": "node tests/performance/lighthouse-ci.js",
     "test:security": "bash tests/security/penetration-tests.sh",
     "test:all": "npm run test:docker && npm run test:e2e",
-    "test:coverage": "playwright test --reporter=html --reporter=json"
+    "test:coverage": "playwright test --reporter=html --reporter=json",
+    "test:quick": "bash tests/scripts/quick-test.sh",
+    "test:with-coverage": "bash tests/scripts/run-tests-with-coverage.sh",
+    "test:summary": "bash tests/scripts/test-summary.sh",
+    "precommit": "bash tests/scripts/pre-commit-test.sh",
+    "test:ci": "bash tests/scripts/run-tests-with-coverage.sh"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.8.0",

@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Quality gates and thresholds for test suite",
+  "version": "1.0.0",
+  "gates": {
+    "docker": {
+      "maxImageSize": 104857600,
+      "maxLayers": 20,
+      "requiredHealthCheck": true,
+      "allowedSeverities": ["LOW", "MEDIUM"],
+      "blockedSeverities": ["CRITICAL", "HIGH"]
+    },
+    "performance": {
+      "budgets": {
+        "pageLoadMs": 3000,
+        "domContentLoadedMs": 1500,
+        "firstContentfulPaintMs": 1500,
+        "largestContentfulPaintMs": 2500,
+        "timeToInteractiveMs": 3500,
+        "totalBlockingTimeMs": 200,
+        "cumulativeLayoutShift": 0.1,
+        "speedIndexMs": 3000,
+        "maxResourceSizeBytes": 102400
+      },
+      "lighthouse": {
+        "performance": 90,
+        "accessibility": 95,
+        "bestPractices": 90,
+        "seo": 90
+      }
+    },
+    "load": {
+      "thresholds": {
+        "maxErrorRate": 0.01,
+        "p95ResponseTimeMs": 300,
+        "p99ResponseTimeMs": 500,
+        "maxResponseTimeMs": 1000,
+        "minThroughput": 10
+      }
+    },
+    "security": {
+      "headers": {
+        "required": [
+          "X-Content-Type-Options",
+          "X-Frame-Options",
+          "X-XSS-Protection",
+          "Referrer-Policy"
+        ],
+        "values": {
+          "X-Content-Type-Options": "nosniff",
+          "X-Frame-Options": "DENY",
+          "X-XSS-Protection": "1; mode=block"
+        }
+      },
+      "vulnerabilities": {
+        "maxCritical": 0,
+        "maxHigh": 0,
+        "maxMedium": 5,
+        "maxLow": 10
+      },
+      "secrets": {
+        "allowSecretsInRepo": false,
+        "scanEnabled": true
+      }
+    },
+    "accessibility": {
+      "wcagLevel": "AA",
+      "maxViolations": {
+        "critical": 0,
+        "serious": 0,
+        "moderate": 2,
+        "minor": 5
+      },
+      "requiredStandards": [
+        "wcag2a",
+        "wcag2aa",
+        "wcag21a",
+        "wcag21aa"
+      ]
+    },
+    "e2e": {
+      "coverage": {
+        "minCoverage": 80,
+        "criticalPaths": [
+          "page-load",
+          "game-initialization",
+          "user-interaction"
+        ]
+      },
+      "thresholds": {
+        "maxConsoleErrors": 0,
+        "maxNetworkErrors": 0,
+        "minSuccessRate": 0.95
+      }
+    },
+    "ci": {
+      "requiredChecks": [
+        "docker-build",
+        "dockerfile-lint",
+        "security-scan",
+        "e2e-tests",
+        "accessibility-tests"
+      ],
+      "optionalChecks": [
+        "visual-regression",
+        "load-tests",
+        "performance-tests"
+      ],
+      "failFast": false,
+      "retries": {
+        "enabled": true,
+        "maxAttempts": 2,
+        "retryableFailures": [
+          "network-timeout",
+          "flaky-test"
+        ]
+      }
+    }
+  },
+  "notifications": {
+    "onFailure": {
+      "enabled": true,
+      "channels": ["github-status", "console"]
+    },
+    "onSuccess": {
+      "enabled": false
+    }
+  },
+  "reporting": {
+    "formats": ["html", "json", "junit"],
+    "artifacts": {
+      "retentionDays": 7,
+      "includeScreenshots": true,
+      "includeVideos": false,
+      "includeTraces": false
+    }
+  }
+}
