@@ -13,10 +13,18 @@
     "test:smoke": "playwright test tests/smoke/",
     "test:docker": "bash tests/docker/run-all-tests.sh",
     "test:load": "k6 run tests/load/k6-load-test.js",
+    "test:load:smoke": "k6 run tests/load/k6-smoke-test.js",
     "test:lighthouse": "node tests/performance/lighthouse-ci.js",
     "test:security": "bash tests/security/penetration-tests.sh",
+    "test:chaos": "playwright test tests/chaos/",
+    "test:chaos:resilience": "playwright test tests/chaos/container-resilience.test.js",
+    "test:integration": "bash tests/integration/run-integration-tests.sh",
+    "test:integration:parallel": "PARALLEL=true bash tests/integration/run-integration-tests.sh",
     "test:all": "npm run test:docker && npm run test:e2e",
-    "test:coverage": "playwright test --reporter=html --reporter=json"
+    "test:all:comprehensive": "bash tests/integration/run-integration-tests.sh",
+    "test:coverage": "playwright test --reporter=html --reporter=json",
+    "test:coverage:unit": "nyc --reporter=html --reporter=text npm run test:unit",
+    "test:ci": "npm run test:docker && npm run test:e2e && npm run test:security"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.8.0",
