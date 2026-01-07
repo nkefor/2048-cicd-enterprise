@@ -44,7 +44,7 @@ const Contact = () => {
         <div className="mb-16">
           <span className="text-[#d9fb06] text-sm font-semibold uppercase tracking-widest">Get in Touch</span>
           <h2 className="text-4xl md:text-5xl font-black text-[#f5f5f4] mt-4 leading-tight">
-            Let's Connect<br />
+            Let&apos;s Connect<br />
             <span className="text-[#888680]">& Build Something</span>
           </h2>
         </div>
@@ -53,7 +53,7 @@ const Contact = () => {
           {/* Contact Info */}
           <div className="space-y-8">
             <p className="text-lg text-[#888680] leading-relaxed">
-              I'm always interested in connecting with people working on interesting infrastructure challenges, 
+              I&apos;m always interested in connecting with people working on interesting infrastructure challenges, 
               particularly in healthcare technology, fintech, or companies taking security and compliance seriously.
             </p>
 
@@ -102,7 +102,7 @@ const Contact = () => {
 
             {/* Open For */}
             <div className="p-6 bg-[#1a1c1b] border border-[#3f4816]/50 rounded-xl">
-              <h4 className="text-[#d9fb06] font-semibold mb-4">What I'm Open To</h4>
+              <h4 className="text-[#d9fb06] font-semibold mb-4">What I&apos;m Open To</h4>
               <ul className="space-y-3">
                 {openForOptions.map((option, idx) => (
                   <li key={idx} className="flex items-start gap-3">
@@ -122,7 +122,7 @@ const Contact = () => {
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <CheckCircle className="text-[#d9fb06] mb-4" size={48} />
                 <h4 className="text-xl font-bold text-[#f5f5f4] mb-2">Message Sent!</h4>
-                <p className="text-[#888680]">I'll get back to you soon.</p>
+                <p className="text-[#888680]">I&apos;ll get back to you soon.</p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
