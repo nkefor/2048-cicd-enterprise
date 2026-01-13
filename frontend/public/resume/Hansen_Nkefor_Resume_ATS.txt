@@ -1,0 +1,190 @@
+HANSEN NKEFOR
+DevOps Engineer | Cloud Architect | Multi-Cloud Infrastructure Specialist
+
+Contact Information
+Location: Atlanta, GA
+Email: hansen.nkefor@example.com
+LinkedIn: linkedin.com/in/hansennkefor
+
+================================================================================
+PROFESSIONAL SUMMARY
+================================================================================
+
+Results-driven DevOps Engineer with 9+ years of experience building enterprise cloud systems that balance reliability, security, and cost efficiency. Specialized in transforming expensive, fragile infrastructure into automated, compliant, cost-optimized platforms. Proven track record of leading Fortune 500 cloud migrations with zero downtime while achieving significant cost reductions and maintaining full regulatory compliance.
+
+Keywords: DevOps, Cloud Architecture, AWS, Azure, Kubernetes, Docker, Terraform, CI/CD, Infrastructure as Code, HIPAA, SOC 2, GDPR, PCI-DSS, Cost Optimization, FinOps, Site Reliability Engineering, Platform Engineering, Cloud Migration, Security Automation, GitOps, Microservices, Containerization
+
+================================================================================
+TECHNICAL SKILLS
+================================================================================
+
+Cloud Platforms:
+- Amazon Web Services (AWS): EC2, EKS, Lambda, S3, RDS, VPC, IAM, CloudFormation, Cost Explorer, GuardDuty, Security Hub, Config, CloudWatch, Auto Scaling, Route 53, Application Migration Service
+- Microsoft Azure: Virtual Machines, AKS, App Services, Functions, Storage, Virtual Networks, Monitor, Policy, Security Center, Key Vault, Azure DevOps, Cost Management
+- Multi-Cloud Architecture, Hybrid Cloud Solutions
+
+Containers and Orchestration:
+- Kubernetes, Docker, Amazon EKS, Azure AKS, Helm, Kustomize, Container Security, Service Mesh
+
+CI/CD and Automation:
+- Jenkins, GitHub Actions, Azure DevOps, GitLab CI, ArgoCD, Terraform, Ansible, CloudFormation, ARM Templates, Bash, PowerShell, Python
+
+Monitoring and Observability:
+- Prometheus, Grafana, Splunk, CloudWatch, Azure Monitor, Application Insights, Log Analytics, ELK Stack, Distributed Tracing, Falco
+
+Security and Compliance:
+- SOC 2 Type II, HIPAA, GDPR, PCI-DSS, Security Automation, Vulnerability Management, Container Security, IAM, RBAC, Encryption (KMS, Key Vault), Network Security, Snyk, Trivy
+
+Databases:
+- PostgreSQL, MySQL, Redis, MongoDB, Database Performance Tuning, Backup and Recovery, High Availability
+
+Programming and Scripting:
+- Python, Bash, PowerShell, YAML, JSON
+
+================================================================================
+PROFESSIONAL EXPERIENCE
+================================================================================
+
+DEVOPS/DEVSECOPS ENGINEER
+Tambena Consulting
+May 2023 - Present
+
+- Led Fortune 500 healthcare organization through 500+ workload migration to AWS with zero downtime, achieving 25% infrastructure cost reduction and full HIPAA compliance
+- Reduced client infrastructure costs by 70% through systematic automation and optimization initiatives using Terraform, Ansible, and Python automation scripts
+- Implemented compliance frameworks including SOC 2, HIPAA, and GDPR, passing all audits with zero critical findings
+- Modernized cloud infrastructure for healthcare, fintech, and enterprise clients across AWS and Azure platforms
+- Designed and implemented multi-region architecture with automated failover mechanisms
+- Created HIPAA-compliant security controls with encryption, access logging, and comprehensive monitoring
+
+--------------------------------------------------------------------------------
+
+AWS CLOUD AND DEVOPS ENGINEER
+Yulys
+May 2021 - April 2023
+
+- Built and maintained AWS and Azure infrastructure for SaaS platform supporting thousands of users
+- Achieved 99.95% uptime through implementation of high-availability architecture and multi-region failover
+- Delivered $10,600 annual savings through strategic cost optimization and resource rightsizing
+- Implemented security standards and compliance measures across all cloud environments
+- Designed and deployed Kubernetes clusters for containerized workloads
+- Automated infrastructure provisioning using Terraform and CloudFormation
+
+--------------------------------------------------------------------------------
+
+CLOUD ENGINEER
+AceDataOps
+November 2017 - April 2021
+
+- Configured secure cloud infrastructure across AWS and Azure with automated provisioning
+- Automated compliance checks achieving 100% adherence to SOC 2 standards
+- Built serverless applications using AWS Lambda and Azure Functions, reducing operational costs by 40%
+- Trained cross-functional teams on cloud security best practices and DevOps methodologies
+- Implemented Infrastructure as Code practices using Terraform and CloudFormation
+- Developed CI/CD pipelines using Jenkins and GitHub Actions
+
+--------------------------------------------------------------------------------
+
+SYSTEM ADMINISTRATOR
+ERESTAUPOS
+June 2015 - September 2017
+
+- Managed 50+ servers maintaining 99.5% uptime through proactive monitoring and maintenance
+- Automated administrative tasks reducing manual effort by 60%
+- Implemented security hardening protocols and patch management processes
+- Built comprehensive monitoring and alerting infrastructure
+- Performed system performance tuning and capacity planning
+- Managed backup and disaster recovery procedures
+
+================================================================================
+KEY PROJECTS AND ACHIEVEMENTS
+================================================================================
+
+FORTUNE 500 HEALTHCARE CLOUD MIGRATION
+Role: Lead DevOps Engineer
+Technologies: AWS, EC2, RDS, S3, VPC, CloudFormation, Terraform, Ansible, Python
+
+- Migrated 500+ workloads from on-premise data center to AWS
+- Achieved zero downtime during entire migration process
+- Reduced infrastructure costs by 25%
+- Passed HHS audit with zero findings
+- Improved application performance by 35%
+- Implemented HIPAA-compliant security controls
+
+--------------------------------------------------------------------------------
+
+MULTI-CLOUD COST OPTIMIZATION PLATFORM
+Role: Cloud Architect
+Technologies: Python, Terraform, AWS Lambda, CloudWatch, Azure Functions, Grafana
+
+- Built automated cost analysis platform using AWS Cost Explorer and Azure Cost Management APIs
+- Delivered 30-70% cost reduction across healthcare, fintech, and SaaS client environments
+- Generated $2M+ in annual savings for clients
+- Reduced manual analysis time by 80% through automation
+- Implemented rightsizing recommendations based on actual usage patterns
+- Created auto-scaling policies adapting to traffic patterns
+
+--------------------------------------------------------------------------------
+
+KUBERNETES SECURITY HARDENING INITIATIVE
+Role: Security Engineer
+Technologies: Kubernetes, Docker, Snyk, Trivy, Prometheus, Grafana, Falco, Azure Policy
+
+- Secured 8 production Kubernetes clusters running sensitive workloads
+- Achieved 30% reduction in security incidents
+- Passed SOC 2 and PCI-DSS compliance audits
+- Implemented Pod Security Standards and network policies
+- Configured RBAC with least-privilege access patterns
+- Integrated automated vulnerability scanning in CI/CD pipelines
+
+--------------------------------------------------------------------------------
+
+ENTERPRISE CI/CD PLATFORM
+Role: Platform Engineer
+Technologies: Jenkins, GitHub Actions, ArgoCD, Terraform, Kubernetes, Helm
+
+- Built standardized deployment platform for 100+ engineers across 50+ microservices
+- Reduced deployment time by 40%
+- Decreased deployment failures by 60%
+- Eliminated manual deployment bottlenecks
+- Created reusable pipeline templates with security scanning and automated testing
+- Implemented GitOps workflows with ArgoCD for declarative deployments
+
+================================================================================
+CERTIFICATIONS
+================================================================================
+
+- AWS Certified Solutions Architect - Professional (Active)
+- AWS Certified Solutions Architect - Associate (Active)
+- AWS Certified Cloud Practitioner (Active)
+- CompTIA Security+ (Active)
+- Microsoft Certified Azure Solutions Architect Expert (In Progress)
+- Microsoft Certified Azure Administrator Associate (In Progress)
+
+================================================================================
+EDUCATION
+================================================================================
+
+Master of Science in Health Services Administration
+Central Michigan University
+
+Bachelor of Science in Business Management
+St. Leo University
+
+================================================================================
+KEY METRICS AND ACHIEVEMENTS
+================================================================================
+
+- 9+ years of DevOps and Cloud Infrastructure experience
+- 500+ workloads migrated to cloud with zero downtime
+- $2M+ annual savings delivered through cost optimization
+- 99.9% uptime maintained across production environments
+- Zero critical findings in SOC 2, HIPAA, and GDPR audits
+- 30% reduction in security incidents through automation
+- 40% faster deployments through CI/CD automation
+- 70% infrastructure cost reduction for enterprise clients
+
+================================================================================
+ADDITIONAL KEYWORDS FOR ATS
+================================================================================
+
+DevOps Engineer, Site Reliability Engineer, SRE, Platform Engineer, Cloud Architect, Cloud Engineer, Infrastructure Engineer, DevSecOps, AWS, Amazon Web Services, Azure, Microsoft Azure, Google Cloud Platform, GCP, Kubernetes, K8s, Docker, Containerization, Microservices, CI/CD, Continuous Integration, Continuous Deployment, Continuous Delivery, Jenkins, GitHub Actions, GitLab CI, ArgoCD, Terraform, Infrastructure as Code, IaC, Ansible, CloudFormation, ARM Templates, Python, Bash, Shell Scripting, PowerShell, YAML, JSON, Prometheus, Grafana, Splunk, ELK Stack, Elasticsearch, Logstash, Kibana, CloudWatch, Monitoring, Observability, Logging, Alerting, HIPAA, SOC 2, GDPR, PCI-DSS, Compliance, Security, IAM, RBAC, Encryption, VPC, Networking, Load Balancing, Auto Scaling, High Availability, Disaster Recovery, Backup, Cost Optimization, FinOps, Agile, Scrum, Linux, Unix, Git, Version Control, API, REST, Serverless, Lambda, Functions, S3, EC2, RDS, EKS, AKS, Helm, Kustomize, Service Mesh, Istio, PostgreSQL, MySQL, Redis, MongoDB, NoSQL, SQL, Database Administration, Performance Tuning, Capacity Planning, Incident Management, Change Management, Release Management, Configuration Management, Automation, Scripting, Cloud Migration, Digital Transformation, Enterprise Architecture, Technical Leadership, Cross-functional Collaboration, Healthcare IT, FinTech, SaaS
