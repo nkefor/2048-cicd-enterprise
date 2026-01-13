@@ -91,6 +91,14 @@ const Hero = () => {
               >
                 Contact Me
               </a>
+              <a
+                href="/resume/Hansen_Nkefor_Resume.md"
+                download="Hansen_Nkefor_Resume.md"
+                className="inline-flex items-center gap-2 bg-[#302f2c] text-[#f5f5f4] px-8 py-4 rounded-full font-semibold text-base border border-[#3f4816]/50 hover:border-[#d9fb06]/50 hover:text-[#d9fb06] transition-all duration-200"
+              >
+                <Download size={18} />
+                Download Resume
+              </a>
             </div>
           </div>
 
