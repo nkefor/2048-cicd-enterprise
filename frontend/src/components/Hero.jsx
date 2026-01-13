@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowDown, MapPin, Cloud, Server, Shield } from 'lucide-react';
+import { ArrowDown, MapPin, Cloud, Server, Shield, Download } from 'lucide-react';
 import { personalInfo, stats } from '../data/mock';
 
 const Hero = () => {
