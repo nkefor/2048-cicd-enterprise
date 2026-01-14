@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Train Schedule - CI/CD Demo</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🚂 Train Schedule System</h1>
+      <p class="subtitle">Enterprise CI/CD Platform Demo</p>
+    </header>
+
+    <div class="info-banner">
+      <span class="badge">Live</span>
+      <span>Real-time train departure information</span>
+    </div>
+
+    <div class="schedule-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Train Number</th>
+            <th>Destination</th>
+            <th>Departure</th>
+            <th>Arrival</th>
+            <th>Platform</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% trains.forEach(train => { %>
+            <tr class="<%= train.status === 'Delayed' ? 'delayed' : '' %>">
+              <td class="train-number"><%= train.trainNumber %></td>
+              <td class="destination"><%= train.destination %></td>
+              <td><%= train.departure %></td>
+              <td><%= train.arrival %></td>
+              <td class="platform"><%= train.platform %></td>
+              <td>
+                <span class="status-badge <%= train.status === 'Delayed' ? 'status-delayed' : 'status-ontime' %>">
+                  <%= train.status %>
+                </span>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+
+    <footer>
+      <p>Deployed via GitHub Actions + AWS ECS Fargate + Docker</p>
+      <p class="tech-stack">
+        <span class="tech-tag">Node.js</span>
+        <span class="tech-tag">Express</span>
+        <span class="tech-tag">Docker</span>
+        <span class="tech-tag">ECS Fargate</span>
+        <span class="tech-tag">GitHub Actions</span>
+      </p>
+    </footer>
+  </div>
+
+  <script>
+    // Auto-refresh every 30 seconds
+    setTimeout(() => {
+      location.reload();
+    }, 30000);
+
+    // Add animation on load
+    document.addEventListener('DOMContentLoaded', () => {
+      const rows = document.querySelectorAll('tbody tr');
+      rows.forEach((row, index) => {
+        row.style.animation = `fadeIn 0.5s ease-in ${index * 0.1}s forwards`;
+        row.style.opacity = '0';
+      });
+    });
+  </script>
+</body>
+</html>

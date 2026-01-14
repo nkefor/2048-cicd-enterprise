@@ -2,6 +2,15 @@
 
 **Production-grade CI/CD platform** delivering automated build, test, and deployment of containerized applications on AWS serverless infrastructure with **$80K-$600K+ annual cost savings** and 90% deployment time reduction.
 
+## Demo Applications
+
+This repository includes **two production-ready applications** demonstrating the CI/CD pipeline:
+
+1. **🎮 2048 Game** - Static web application (NGINX) - `2048/`
+2. **🚂 Train Schedule** - Node.js/Express application - `train-schedule/`
+
+Both applications showcase different containerization patterns and deployment strategies.
+
 ## Business Value
 
 - 💰 **40-60% infrastructure cost reduction** vs traditional EC2-based deployments
@@ -93,17 +102,26 @@ This **enterprise-grade CI/CD pipeline** automates the entire software delivery 
 | **Load Balancer** | AWS ALB | Traffic distribution, SSL termination |
 | **Infrastructure** | Terraform | Infrastructure-as-Code |
 | **Container** | Docker | Application packaging |
-| **Web Server** | NGINX | Static content serving |
+| **Web Server** | NGINX + Node.js | Static and dynamic content |
+| **Application Framework** | Express.js | Backend API framework |
 | **Monitoring** | CloudWatch | Logs, metrics, alarms |
 | **Security** | AWS IAM, OIDC | Identity and access management |
+| **Testing** | Playwright, Jest | E2E and unit testing |
 
 ## Project Structure
 
 ```
 2048-cicd-enterprise/
 ├── 2048/
-│   ├── Dockerfile                      # Container definition
+│   ├── Dockerfile                      # NGINX-based container
 │   └── www/                            # Static application files
+├── train-schedule/
+│   ├── Dockerfile                      # Node.js container
+│   ├── server.js                       # Express application
+│   ├── views/                          # EJS templates
+│   ├── public/                         # Static assets
+│   ├── test/                           # Jest tests
+│   └── package.json                    # Node dependencies
 ├── infra/
 │   ├── main.tf                         # Main Terraform config
 │   ├── variables.tf                    # Input variables
@@ -117,7 +135,8 @@ This **enterprise-grade CI/CD pipeline** automates the entire software delivery 
 │   └── security-groups.tf              # Network security
 ├── .github/
 │   └── workflows/
-│       └── deploy.yaml                 # CI/CD pipeline
+│       ├── deploy.yaml                 # CI/CD for 2048 game
+│       └── deploy-train-schedule.yaml  # CI/CD for train schedule
 ├── scripts/
 │   ├── deploy.sh                       # Deployment automation
 │   └── cleanup.sh                      # Resource cleanup
@@ -125,6 +144,7 @@ This **enterprise-grade CI/CD pipeline** automates the entire software delivery 
 │   ├── ENTERPRISE-VALUE.md             # ROI analysis
 │   ├── DEPLOYMENT-GUIDE.md             # Setup instructions
 │   └── TROUBLESHOOTING.md              # Problem resolution
+├── tests/                              # E2E and integration tests
 ├── README.md                           # This file
 └── .gitignore
 ```
@@ -160,6 +180,32 @@ git push origin main
 ```
 
 **Deployment time**: ~15 minutes to production
+
+### Quick Start - Local Development
+
+**2048 Game (Static Application)**:
+```bash
+# Build and run with Docker
+cd 2048
+docker build -t 2048-game .
+docker run -p 8080:80 2048-game
+# Visit http://localhost:8080
+```
+
+**Train Schedule (Node.js Application)**:
+```bash
+# Option 1: Run with Node.js
+cd train-schedule
+npm install
+npm start
+# Visit http://localhost:3000
+
+# Option 2: Run with Docker
+cd train-schedule
+docker build -t train-schedule .
+docker run -p 3000:3000 train-schedule
+# Visit http://localhost:3000
+```
 
 ## Key Features
 

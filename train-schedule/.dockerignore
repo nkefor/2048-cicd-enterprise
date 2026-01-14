@@ -1,0 +1,16 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+README.md
+.env
+.env.*
+*.log
+coverage
+.DS_Store
+.vscode
+.idea
+*.test.js
+*.spec.js
+tests/
+.github/

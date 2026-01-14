@@ -1,0 +1,84 @@
+name: Deploy Train Schedule App
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'train-schedule/**'
+      - '.github/workflows/deploy-train-schedule.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REPO_TRAIN: ${{ secrets.ECR_REPO_TRAIN }}
+  ECS_CLUSTER: train-schedule
+  ECS_SERVICE: train-schedule
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy Train Schedule
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-TrainSchedule
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push Docker image to Amazon ECR
+        id: build-image
+        working-directory: ./train-schedule
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REPO_TRAIN:$IMAGE_TAG .
+          docker tag $ECR_REPO_TRAIN:$IMAGE_TAG $ECR_REPO_TRAIN:latest
+          docker push $ECR_REPO_TRAIN:$IMAGE_TAG
+          docker push $ECR_REPO_TRAIN:latest
+          echo "image=$ECR_REPO_TRAIN:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Download task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition $ECS_SERVICE \
+            --query taskDefinition > task-definition.json
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.ECS_SERVICE }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+      - name: Verify deployment
+        run: |
+          echo "✅ Train Schedule deployment completed successfully!"
+          echo "📦 Image: ${{ steps.build-image.outputs.image }}"
+          echo "🚀 Cluster: ${{ env.ECS_CLUSTER }}"
+          echo "🔧 Service: ${{ env.ECS_SERVICE }}"
