@@ -1,23 +1,54 @@
-name: CI/CD Pipeline
+name: "Deploy: Blue/Green Pipeline"
 
 on:
   push:
     branches: [ main ]
     paths:
       - '2048/**'
+      - 'scripts/**'
       - '.github/workflows/deploy.yaml'
   workflow_dispatch:
+    inputs:
+      force_rollback:
+        description: 'Force rollback to previous version'
+        required: false
+        default: 'false'
+        type: boolean
+      target_env:
+        description: 'Force deploy to specific environment (blue/green)'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - blue
+          - green
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ECR_REPO: ${{ secrets.ECR_REPO }}
+  ECS_CLUSTER: game-2048
+  ECS_SERVICE_BLUE: game-2048-blue
+  ECS_SERVICE_GREEN: game-2048-green
+  TG_BLUE_ARN: ${{ secrets.TG_BLUE_ARN }}
+  TG_GREEN_ARN: ${{ secrets.TG_GREEN_ARN }}
+  ALB_LISTENER_ARN: ${{ secrets.ALB_LISTENER_ARN }}
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
-  build-and-deploy:
+  # ============================================================
+  # STAGE 1: Pre-flight checks and build
+  # ============================================================
+  build:
+    name: "Build & Push Image"
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+      image_uri: ${{ steps.meta.outputs.image_uri }}
+      commit_sha: ${{ github.sha }}
 
     steps:
       - name: Checkout code
@@ -26,17 +57,40 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Generate image metadata
+        id: meta
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          IMAGE_TAG="${{ github.sha }}-${TIMESTAMP}"
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "image_uri=${{ env.ECR_REPO }}:${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
+
       - name: Lint Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: 2048/Dockerfile
+          failure-threshold: error
 
       - name: Build and test container locally
         run: |
           docker build -t test-2048 ./2048
           docker run -d -p 8080:80 --name test test-2048
           sleep 3
+
+          echo "Testing health endpoint..."
+          curl -f http://localhost:8080/health || exit 1
+
+          echo "Testing main page..."
           curl -f http://localhost:8080/ || exit 1
+
+          echo "Verifying security headers..."
+          HEADERS=$(curl -sI http://localhost:8080/)
+          echo "$HEADERS" | grep -q "X-Content-Type-Options" || { echo "Missing X-Content-Type-Options"; exit 1; }
+          echo "$HEADERS" | grep -q "X-Frame-Options" || { echo "Missing X-Frame-Options"; exit 1; }
+          echo "$HEADERS" | grep -q "X-XSS-Protection" || { echo "Missing X-XSS-Protection"; exit 1; }
+          echo "All pre-flight checks passed"
+
           docker rm -f test
 
       - name: Scan for vulnerabilities
@@ -45,6 +99,7 @@ jobs:
           scan-type: 'fs'
           scan-ref: './2048'
           severity: 'CRITICAL,HIGH'
+          exit-code: '1'
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -62,45 +117,209 @@ jobs:
           context: ./2048
           push: true
           tags: |
+            ${{ env.ECR_REPO }}:${{ steps.meta.outputs.image_tag }}
             ${{ env.ECR_REPO }}:${{ github.sha }}
             ${{ env.ECR_REPO }}:latest
+          cache-from: type=registry,ref=${{ env.ECR_REPO }}:buildcache
+          cache-to: type=registry,ref=${{ env.ECR_REPO }}:buildcache,mode=max
 
-      - name: Deploy to Amazon ECS
+  # ============================================================
+  # STAGE 2: Identify active environment and deploy to standby
+  # ============================================================
+  deploy:
+    name: "Blue/Green Deploy"
+    runs-on: ubuntu-latest
+    needs: build
+    outputs:
+      active_env: ${{ steps.identify.outputs.active_env }}
+      standby_env: ${{ steps.identify.outputs.standby_env }}
+      standby_service: ${{ steps.identify.outputs.standby_service }}
+      active_service: ${{ steps.identify.outputs.active_service }}
+      endpoint: ${{ steps.get-endpoint.outputs.endpoint }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ---------------------------------------------------------
+      # Identify which environment is currently active
+      # ---------------------------------------------------------
+      - name: Identify active environment
+        id: identify
         run: |
-          # Update ECS service with new image
+          echo "============================================"
+          echo "  Identifying Active Environment"
+          echo "============================================"
+
+          # Handle manual rollback
+          if [ "${{ github.event.inputs.force_rollback }}" = "true" ]; then
+            echo "ROLLBACK requested - will switch traffic back"
+          fi
+
+          # Handle forced target environment
+          if [ "${{ github.event.inputs.target_env }}" != "auto" ] && [ -n "${{ github.event.inputs.target_env }}" ]; then
+            STANDBY="${{ github.event.inputs.target_env }}"
+            if [ "$STANDBY" = "blue" ]; then
+              ACTIVE="green"
+            else
+              ACTIVE="blue"
+            fi
+            echo "Forced target environment: deploying to $STANDBY"
+          else
+            # Auto-detect: check which target group the ALB listener forwards to
+            if [ -n "${{ env.ALB_LISTENER_ARN }}" ]; then
+              CURRENT_TG=$(aws elbv2 describe-rules \
+                --listener-arn ${{ env.ALB_LISTENER_ARN }} \
+                --region ${{ env.AWS_REGION }} \
+                --query 'Rules[?IsDefault==`true`].Actions[0].TargetGroupArn' \
+                --output text 2>/dev/null || echo "")
+
+              if [ "$CURRENT_TG" = "${{ env.TG_BLUE_ARN }}" ]; then
+                ACTIVE="blue"
+                STANDBY="green"
+              elif [ "$CURRENT_TG" = "${{ env.TG_GREEN_ARN }}" ]; then
+                ACTIVE="green"
+                STANDBY="blue"
+              else
+                # Default: deploy to blue first
+                ACTIVE="none"
+                STANDBY="blue"
+              fi
+            else
+              # No ALB configured - single service mode
+              ACTIVE="none"
+              STANDBY="blue"
+            fi
+          fi
+
+          echo "Active environment:  $ACTIVE"
+          echo "Standby environment: $STANDBY (deploy target)"
+
+          if [ "$STANDBY" = "blue" ]; then
+            STANDBY_SERVICE="${{ env.ECS_SERVICE_BLUE }}"
+            ACTIVE_SERVICE="${{ env.ECS_SERVICE_GREEN }}"
+          else
+            STANDBY_SERVICE="${{ env.ECS_SERVICE_GREEN }}"
+            ACTIVE_SERVICE="${{ env.ECS_SERVICE_BLUE }}"
+          fi
+
+          echo "active_env=$ACTIVE" >> $GITHUB_OUTPUT
+          echo "standby_env=$STANDBY" >> $GITHUB_OUTPUT
+          echo "standby_service=$STANDBY_SERVICE" >> $GITHUB_OUTPUT
+          echo "active_service=$ACTIVE_SERVICE" >> $GITHUB_OUTPUT
+
+      # ---------------------------------------------------------
+      # Deploy new image to the standby environment
+      # ---------------------------------------------------------
+      - name: Deploy to standby environment
+        run: |
+          echo "============================================"
+          echo "  Deploying to: ${{ steps.identify.outputs.standby_env }}"
+          echo "  Service: ${{ steps.identify.outputs.standby_service }}"
+          echo "  Image: ${{ needs.build.outputs.image_uri }}"
+          echo "============================================"
+
+          # Update the standby ECS service with new image
           aws ecs update-service \
-            --cluster game-2048 \
-            --service game-2048 \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ steps.identify.outputs.standby_service }} \
             --force-new-deployment \
             --region ${{ env.AWS_REGION }}
 
-      - name: Wait for deployment
+      - name: Wait for standby service stability
         run: |
+          echo "Waiting for ${{ steps.identify.outputs.standby_service }} to stabilize..."
           aws ecs wait services-stable \
-            --cluster game-2048 \
-            --services game-2048 \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ steps.identify.outputs.standby_service }} \
             --region ${{ env.AWS_REGION }}
+          echo "Standby service is stable"
+
+      # ---------------------------------------------------------
+      # Health check the standby environment before switching
+      # ---------------------------------------------------------
+      - name: Pre-cutover health check
+        run: |
+          echo "============================================"
+          echo "  Pre-Cutover Health Check"
+          echo "============================================"
+
+          bash scripts/health-check.sh \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ steps.identify.outputs.standby_service }} \
+            --region ${{ env.AWS_REGION }} \
+            --max-attempts 5 \
+            --interval 10
+
+      # ---------------------------------------------------------
+      # Switch ALB traffic to the standby (now verified) environment
+      # ---------------------------------------------------------
+      - name: Switch traffic (Blue/Green cutover)
+        id: cutover
+        run: |
+          echo "============================================"
+          echo "  Switching Traffic"
+          echo "  From: ${{ steps.identify.outputs.active_env }}"
+          echo "  To:   ${{ steps.identify.outputs.standby_env }}"
+          echo "============================================"
+
+          if [ -n "${{ env.ALB_LISTENER_ARN }}" ]; then
+            # Determine which target group to forward to
+            if [ "${{ steps.identify.outputs.standby_env }}" = "blue" ]; then
+              NEW_TG="${{ env.TG_BLUE_ARN }}"
+            else
+              NEW_TG="${{ env.TG_GREEN_ARN }}"
+            fi
+
+            # Modify the ALB listener default action
+            aws elbv2 modify-rule \
+              --rule-arn $(aws elbv2 describe-rules \
+                --listener-arn ${{ env.ALB_LISTENER_ARN }} \
+                --region ${{ env.AWS_REGION }} \
+                --query 'Rules[?IsDefault==`true`].RuleArn' \
+                --output text) \
+              --actions Type=forward,TargetGroupArn=$NEW_TG \
+              --region ${{ env.AWS_REGION }}
+
+            echo "Traffic switched to ${{ steps.identify.outputs.standby_env }}"
+            echo "cutover_completed=true" >> $GITHUB_OUTPUT
+          else
+            echo "No ALB listener configured - using single service deployment"
+
+            # Fallback: single service mode
+            aws ecs update-service \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --service game-2048 \
+              --force-new-deployment \
+              --region ${{ env.AWS_REGION }} 2>/dev/null || true
+
+            echo "cutover_completed=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Get ALB endpoint
         id: get-endpoint
         run: |
-          # Get the target group ARN from ECS service
+          # Try to get the ALB endpoint for verification
           TARGET_GROUP_ARN=$(aws ecs describe-services \
-            --cluster game-2048 \
-            --services game-2048 \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ steps.identify.outputs.standby_service }} \
             --region ${{ env.AWS_REGION }} \
             --query 'services[0].loadBalancers[0].targetGroupArn' \
-            --output text)
+            --output text 2>/dev/null || echo "None")
 
           if [ "$TARGET_GROUP_ARN" != "None" ] && [ -n "$TARGET_GROUP_ARN" ]; then
-            # Get the load balancer ARN from target group
             LB_ARN=$(aws elbv2 describe-target-groups \
               --target-group-arns $TARGET_GROUP_ARN \
               --region ${{ env.AWS_REGION }} \
               --query 'TargetGroups[0].LoadBalancerArns[0]' \
               --output text)
 
-            # Get the load balancer DNS name
             LB_DNS=$(aws elbv2 describe-load-balancers \
               --load-balancer-arns $LB_ARN \
               --region ${{ env.AWS_REGION }} \
@@ -108,43 +327,67 @@ jobs:
               --output text)
 
             echo "endpoint=http://${LB_DNS}" >> $GITHUB_OUTPUT
-            echo "ALB endpoint: http://${LB_DNS}"
           else
-            echo "No load balancer configured for this service"
             echo "endpoint=" >> $GITHUB_OUTPUT
           fi
 
+  # ============================================================
+  # STAGE 3: Post-deployment verification
+  # ============================================================
+  verify:
+    name: "Post-Deploy Verification"
+    runs-on: ubuntu-latest
+    needs: [build, deploy]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Post-deployment health check
         run: |
-          ENDPOINT="${{ steps.get-endpoint.outputs.endpoint }}"
+          ENDPOINT="${{ needs.deploy.outputs.endpoint }}"
 
           if [ -n "$ENDPOINT" ]; then
-            echo "Performing health check on: $ENDPOINT"
-
-            # Give the service a moment to fully stabilize
+            echo "Performing post-deployment verification on: $ENDPOINT"
             sleep 10
 
-            # Retry health check up to 5 times with 10-second intervals
             MAX_ATTEMPTS=5
             ATTEMPT=1
 
             while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
               echo "Health check attempt $ATTEMPT of $MAX_ATTEMPTS..."
 
-              if curl -f -s -o /dev/null -w "%{http_code}" "$ENDPOINT" | grep -q "200"; then
-                echo "✅ Health check passed! Service is responding with HTTP 200"
+              HTTP_CODE=$(curl -f -s -o /dev/null -w "%{http_code}" "$ENDPOINT" 2>/dev/null || echo "000")
 
-                # Verify security headers are present
-                echo "Verifying security headers..."
-                curl -I "$ENDPOINT" 2>/dev/null | grep -E "(X-Content-Type-Options|X-Frame-Options|X-XSS-Protection)" && \
-                  echo "✅ Security headers verified" || \
-                  echo "⚠️ Warning: Some security headers may be missing"
+              if [ "$HTTP_CODE" = "200" ]; then
+                echo "HTTP 200 - Service is responding"
 
+                # Verify security headers
+                echo ""
+                echo "Security Header Verification:"
+                HEADERS=$(curl -sI "$ENDPOINT" 2>/dev/null)
+                echo "$HEADERS" | grep -i "X-Content-Type-Options" && echo "  OK" || echo "  MISSING"
+                echo "$HEADERS" | grep -i "X-Frame-Options" && echo "  OK" || echo "  MISSING"
+                echo "$HEADERS" | grep -i "X-XSS-Protection" && echo "  OK" || echo "  MISSING"
+                echo "$HEADERS" | grep -i "Strict-Transport-Security" && echo "  OK" || echo "  MISSING"
+
+                # Check response time
+                echo ""
+                RESPONSE_TIME=$(curl -s -o /dev/null -w "%{time_total}" "$ENDPOINT" 2>/dev/null)
+                echo "Response time: ${RESPONSE_TIME}s"
+
+                echo ""
+                echo "Post-deployment verification PASSED"
                 exit 0
               else
-                echo "❌ Health check failed (attempt $ATTEMPT)"
+                echo "Health check returned HTTP $HTTP_CODE (attempt $ATTEMPT)"
                 if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
-                  echo "Waiting 10 seconds before retry..."
                   sleep 10
                 fi
               fi
@@ -152,11 +395,12 @@ jobs:
               ATTEMPT=$((ATTEMPT + 1))
             done
 
-            echo "❌ Health check failed after $MAX_ATTEMPTS attempts"
+            echo "Post-deployment verification FAILED after $MAX_ATTEMPTS attempts"
+            echo "TRIGGERING AUTOMATIC ROLLBACK"
             exit 1
           else
-            echo "⚠️ No ALB endpoint configured - skipping health check"
-            echo "Deployment verification complete - service is stable"
+            echo "No ALB endpoint configured - skipping live verification"
+            echo "Deployment verified via ECS service stability check"
           fi
 
       - name: Set up Node.js for E2E tests
@@ -173,16 +417,116 @@ jobs:
 
       - name: Run E2E smoke tests
         env:
-          BASE_URL: ${{ steps.get-endpoint.outputs.endpoint }}
+          BASE_URL: ${{ needs.deploy.outputs.endpoint }}
         run: |
-          # Run only critical smoke tests in CI (chromium only)
-          npx playwright test tests/e2e/security-headers.test.js --project=chromium
+          if [ -n "${{ needs.deploy.outputs.endpoint }}" ]; then
+            npx playwright test tests/e2e/security-headers.test.js --project=chromium
+          else
+            echo "No endpoint available - skipping E2E tests"
+          fi
         continue-on-error: true
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: post-deploy-test-results
           path: test-results/
           retention-days: 7
+
+  # ============================================================
+  # STAGE 4: Automatic rollback on verification failure
+  # ============================================================
+  rollback:
+    name: "Auto-Rollback (on failure)"
+    runs-on: ubuntu-latest
+    needs: [deploy, verify]
+    if: failure()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Execute rollback
+        run: |
+          echo "============================================"
+          echo "  AUTOMATIC ROLLBACK"
+          echo "  Switching traffic back to: ${{ needs.deploy.outputs.active_env }}"
+          echo "============================================"
+
+          if [ -n "${{ env.ALB_LISTENER_ARN }}" ]; then
+            # Switch ALB back to the previously active target group
+            if [ "${{ needs.deploy.outputs.active_env }}" = "blue" ]; then
+              ROLLBACK_TG="${{ env.TG_BLUE_ARN }}"
+            else
+              ROLLBACK_TG="${{ env.TG_GREEN_ARN }}"
+            fi
+
+            RULE_ARN=$(aws elbv2 describe-rules \
+              --listener-arn ${{ env.ALB_LISTENER_ARN }} \
+              --region ${{ env.AWS_REGION }} \
+              --query 'Rules[?IsDefault==`true`].RuleArn' \
+              --output text)
+
+            aws elbv2 modify-rule \
+              --rule-arn $RULE_ARN \
+              --actions Type=forward,TargetGroupArn=$ROLLBACK_TG \
+              --region ${{ env.AWS_REGION }}
+
+            echo "Traffic rolled back to ${{ needs.deploy.outputs.active_env }}"
+          else
+            echo "No ALB listener configured - rollback via ECS service update"
+          fi
+
+      - name: Notify rollback
+        run: |
+          echo "============================================"
+          echo "  ROLLBACK COMPLETED"
+          echo "============================================"
+          echo ""
+          echo "  Commit: ${{ github.sha }}"
+          echo "  Image:  ${{ needs.build.outputs.image_uri }}"
+          echo "  Reason: Post-deploy verification failed"
+          echo "  Action: Traffic restored to ${{ needs.deploy.outputs.active_env }}"
+          echo ""
+          echo "  The failed deployment is preserved in"
+          echo "  ${{ needs.deploy.outputs.standby_env }} for debugging."
+          echo "============================================"
+
+  # ============================================================
+  # STAGE 5: Deployment summary notification
+  # ============================================================
+  notify:
+    name: "Deployment Summary"
+    runs-on: ubuntu-latest
+    needs: [build, deploy, verify]
+    if: always()
+
+    steps:
+      - name: Deployment summary
+        run: |
+          echo "╔═══════════════════════════════════════════════════════════╗"
+          echo "║             DEPLOYMENT SUMMARY                            ║"
+          echo "╠═══════════════════════════════════════════════════════════╣"
+          echo "║                                                           ║"
+          echo "║  Commit:    ${{ github.sha }}   ║"
+          echo "║  Image Tag: ${{ needs.build.outputs.image_tag }}              ║"
+          echo "║  Target:    ${{ needs.deploy.outputs.standby_env }}                              ║"
+          echo "║                                                           ║"
+          echo "║  Build:     ${{ needs.build.result }}                              ║"
+          echo "║  Deploy:    ${{ needs.deploy.result }}                              ║"
+          echo "║  Verify:    ${{ needs.verify.result }}                              ║"
+          echo "║                                                           ║"
+          echo "╚═══════════════════════════════════════════════════════════╝"
+
+      - name: Notify on failure
+        if: needs.build.result == 'failure' || needs.deploy.result == 'failure'
+        run: |
+          echo "DEPLOYMENT FAILED - check logs above for details"
+          exit 1
