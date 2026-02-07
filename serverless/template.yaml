@@ -1,0 +1,262 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Game 2048 Serverless Backend - Leaderboard API with event-driven processing.
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 10
+    MemorySize: 256
+    Tracing: Active
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref ScoresTable
+        REGION: !Ref AWS::Region
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, staging, prod]
+  NotificationEmail:
+    Type: String
+    Default: ""
+    Description: Email for high-score notifications (leave empty to skip)
+
+Resources:
+  # ============================================================
+  # API Gateway
+  # ============================================================
+  GameApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      Description: Game 2048 Leaderboard API
+      EndpointConfiguration:
+        Type: REGIONAL
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Api-Key'"
+        AllowOrigin: "'*'"
+      Auth:
+        ApiKeyRequired: true
+        UsagePlan:
+          CreateUsagePlan: PER_API
+          Throttle:
+            BurstLimit: 100
+            RateLimit: 50
+          Quota:
+            Limit: 10000
+            Period: DAY
+      AccessLogSetting:
+        DestinationArn: !GetAtt ApiAccessLogGroup.Arn
+      MethodSettings:
+        - HttpMethod: "*"
+          ResourcePath: "/*"
+          ThrottlingBurstLimit: 100
+          ThrottlingRateLimit: 50
+          MetricsEnabled: true
+          DataTraceEnabled: false
+          LoggingLevel: ERROR
+
+  # ============================================================
+  # Lambda Functions
+  # ============================================================
+  HealthCheckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub game-2048-health-${Environment}
+      Handler: api/health.handler
+      CodeUri: functions/
+      Description: Health check endpoint
+      Events:
+        HealthCheck:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameApi
+            Path: /health
+            Method: GET
+            Auth:
+              ApiKeyRequired: false
+
+  GetScoresFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub game-2048-get-scores-${Environment}
+      Handler: api/scores.getScores
+      CodeUri: functions/
+      Description: Get scores for a player
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ScoresTable
+      Events:
+        GetScores:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameApi
+            Path: /scores
+            Method: GET
+
+  SubmitScoreFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub game-2048-submit-score-${Environment}
+      Handler: api/scores.submitScore
+      CodeUri: functions/
+      Description: Submit a new game score
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ScoresTable
+      Events:
+        SubmitScore:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameApi
+            Path: /scores
+            Method: POST
+            RequestModel:
+              Model: ScoreModel
+              Required: true
+              ValidateBody: true
+
+  GetLeaderboardFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub game-2048-leaderboard-${Environment}
+      Handler: api/scores.getLeaderboard
+      CodeUri: functions/
+      Description: Get top scores leaderboard
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ScoresTable
+      Events:
+        GetLeaderboard:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameApi
+            Path: /scores/top
+            Method: GET
+
+  ScoreProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub game-2048-processor-${Environment}
+      Handler: processor/index.handler
+      CodeUri: functions/
+      Description: Process new scores from DynamoDB Stream
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ScoresTable
+        - SNSPublishMessagePolicy:
+            TopicArn: !Ref HighScoreTopic
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref HighScoreTopic
+      Events:
+        DynamoDBStream:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt ScoresTable.StreamArn
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 10
+            MaximumRetryAttempts: 3
+            BisectBatchOnFunctionError: true
+
+  NotifierFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub game-2048-notifier-${Environment}
+      Handler: notifier/index.handler
+      CodeUri: functions/
+      Description: Send notifications for high scores
+      Events:
+        SNSTrigger:
+          Type: SNS
+          Properties:
+            Topic: !Ref HighScoreTopic
+
+  # ============================================================
+  # DynamoDB Table
+  # ============================================================
+  ScoresTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: !Sub game-2048-scores-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: playerId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+        - AttributeName: score
+          AttributeType: "N"
+      KeySchema:
+        - AttributeName: playerId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: score-index
+          KeySchema:
+            - AttributeName: playerId
+              KeyType: HASH
+            - AttributeName: score
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Project
+          Value: game-2048
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ============================================================
+  # SNS Topic
+  # ============================================================
+  HighScoreTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub game-2048-high-scores-${Environment}
+
+  HighScoreEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasNotificationEmail
+    Properties:
+      TopicArn: !Ref HighScoreTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # ============================================================
+  # CloudWatch Logs
+  # ============================================================
+  ApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/game-2048-${Environment}
+      RetentionInDays: 30
+
+Conditions:
+  HasNotificationEmail: !Not [!Equals [!Ref NotificationEmail, ""]]
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${GameApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+
+  ApiId:
+    Description: API Gateway ID
+    Value: !Ref GameApi
+
+  ScoresTableName:
+    Description: DynamoDB table name
+    Value: !Ref ScoresTable
+
+  HighScoreTopicArn:
+    Description: SNS topic for high score notifications
+    Value: !Ref HighScoreTopic

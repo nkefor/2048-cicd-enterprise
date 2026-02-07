@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-config
+  namespace: logging
+data:
+  fluent.conf: |
+    # ============================================================
+    # Fluentd Configuration - EFK Stack
+    # ============================================================
+
+    # Input: tail container logs
+    <source>
+      @type tail
+      path /var/log/containers/*.log
+      pos_file /fluentd/buffer/containers.log.pos
+      tag kubernetes.*
+      read_from_head true
+      <parse>
+        @type json
+        time_key time
+        time_format %Y-%m-%dT%H:%M:%S.%NZ
+        keep_time_key true
+      </parse>
+    </source>
+
+    # Filter: add Kubernetes metadata (pod name, namespace, labels)
+    <filter kubernetes.**>
+      @type kubernetes_metadata
+      @id filter_kube_metadata
+      kubernetes_url "https://#{ENV['KUBERNETES_SERVICE_HOST']}:#{ENV['KUBERNETES_SERVICE_PORT_HTTPS']}"
+      verify_ssl true
+      ca_file /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      bearer_token_file /var/run/secrets/kubernetes.io/serviceaccount/token
+      skip_labels false
+      skip_container_metadata false
+      skip_namespace_metadata false
+    </filter>
+
+    # Filter: parse JSON log messages from application containers
+    <filter kubernetes.var.log.containers.game-2048**>
+      @type parser
+      key_name log
+      reserve_data true
+      remove_key_name_field false
+      <parse>
+        @type json
+        json_parser json
+      </parse>
+    </filter>
+
+    # Filter: drop health check noise
+    <filter kubernetes.**>
+      @type grep
+      <exclude>
+        key log
+        pattern /GET \/health|GET \/readiness|kube-probe/
+      </exclude>
+    </filter>
+
+    # Filter: add severity level from log content
+    <filter kubernetes.**>
+      @type record_transformer
+      enable_ruby true
+      <record>
+        severity ${record["level"] || (record["log"].to_s.match?(/error|fatal|panic/i) ? "error" : record["log"].to_s.match?(/warn/i) ? "warning" : "info")}
+        cluster "game-2048"
+      </record>
+    </filter>
+
+    # Output: Elasticsearch with file buffer for reliability
+    <match kubernetes.**>
+      @type elasticsearch
+      @id out_es
+      host "#{ENV['FLUENT_ELASTICSEARCH_HOST']}"
+      port "#{ENV['FLUENT_ELASTICSEARCH_PORT']}"
+      scheme "#{ENV['FLUENT_ELASTICSEARCH_SCHEME']}"
+
+      # Daily index rotation
+      logstash_format true
+      logstash_prefix "#{ENV['FLUENT_ELASTICSEARCH_LOGSTASH_PREFIX']}"
+      logstash_dateformat %Y.%m.%d
+
+      # Include metadata in index
+      include_tag_key true
+      type_name _doc
+
+      # Buffer configuration for reliability
+      <buffer>
+        @type file
+        path /fluentd/buffer/es-output
+        flush_mode interval
+        flush_interval 5s
+        flush_thread_count 2
+        retry_type exponential_backoff
+        retry_wait 1s
+        retry_max_interval 60s
+        retry_forever true
+        chunk_limit_size 8MB
+        queue_limit_length 32
+        overflow_action drop_oldest_chunk
+      </buffer>
+    </match>
