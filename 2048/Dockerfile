@@ -1,4 +1,4 @@
-FROM nginx:1.27-alpine
+FROM nginx:1.29.5-alpine
 
 # Copy static game files
 COPY www /usr/share/nginx/html
