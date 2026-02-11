@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  healthcare-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: np-healthcare
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - SESSION_SECRET=${SESSION_SECRET:-change-this-in-production}
+      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-sk_test_placeholder}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY:-pk_test_placeholder}
+      - PRACTICE_NAME=${PRACTICE_NAME:-NP Healthcare Practice}
+      - DB_PATH=/app/db/practice.db
+    volumes:
+      - healthcare-data:/app/db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  healthcare-data:
+    driver: local

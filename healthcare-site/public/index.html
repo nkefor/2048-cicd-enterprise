@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NP Healthcare Practice | Telehealth & DOT Physicals</title>
+    <meta name="description" content="Board-certified Nurse Practitioner offering telehealth consultations and DOT physical examinations. Convenient, professional healthcare on your schedule.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="navbar">
+    <a href="/" class="nav-brand">
+        <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="36" height="36" rx="8" fill="#0D6EFD"/>
+            <path d="M18 8v20M8 18h20" stroke="white" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        NP Healthcare
+    </a>
+    <ul class="nav-links">
+        <li><a href="/" class="active">Home</a></li>
+        <li><a href="/services">Services</a></li>
+        <li><a href="/telehealth">Telehealth</a></li>
+        <li><a href="/dot-physicals">DOT Physicals</a></li>
+        <li><a href="/contact">Contact</a></li>
+    </ul>
+    <div class="nav-actions">
+        <a href="/portal" class="btn btn-outline btn-sm">Patient Login</a>
+        <a href="/book" class="btn btn-primary btn-sm">Book Now</a>
+    </div>
+    <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').classList.toggle('open')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+    </button>
+</nav>
+
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-content">
+        <div class="hero-text">
+            <h1>Quality Healthcare,<br>On Your Schedule</h1>
+            <p>Board-certified Nurse Practitioner providing convenient telehealth consultations and certified DOT physical examinations. Professional care from the comfort of your home or at our clinic.</p>
+            <div class="hero-buttons">
+                <a href="/book" class="btn btn-white btn-lg">Book Appointment</a>
+                <a href="/services" class="btn btn-lg" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3)">View Services</a>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="hero-card">
+                <h3>Why Choose Us</h3>
+                <ul class="hero-card-features">
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        FMCSA-Certified DOT Examiner
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        Same-Day Telehealth Available
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        Secure Online Payments
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        Easy Online Booking
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        HIPAA-Compliant Platform
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Services Overview -->
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <span class="badge badge-primary">Our Services</span>
+            <h2>Comprehensive Healthcare Services</h2>
+            <p>From virtual consultations to certified physical exams, we provide the care you need with the convenience you deserve.</p>
+        </div>
+        <div class="services-grid">
+            <div class="service-card">
+                <div class="service-icon service-icon-blue">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                </div>
+                <h3>Telehealth Consultations</h3>
+                <p>Secure video visits from anywhere. Get expert care for common conditions, medication management, and follow-up visits.</p>
+                <div class="service-price">$150 <span>per visit</span></div>
+                <a href="/telehealth" class="btn btn-primary" style="width:100%">Learn More</a>
+            </div>
+            <div class="service-card">
+                <div class="service-icon service-icon-teal">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                </div>
+                <h3>DOT Physical Exams</h3>
+                <p>FMCSA-certified DOT physical examinations for commercial drivers. Fast, thorough, and compliant with federal regulations.</p>
+                <div class="service-price">$125 <span>per exam</span></div>
+                <a href="/dot-physicals" class="btn btn-secondary" style="width:100%">Learn More</a>
+            </div>
+            <div class="service-card">
+                <div class="service-icon service-icon-purple">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <h3>General Consultations</h3>
+                <p>Comprehensive health evaluations, preventive care, chronic disease management, and wellness visits.</p>
+                <div class="service-price">$100 <span>per visit</span></div>
+                <a href="/book" class="btn btn-outline" style="width:100%">Book Now</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works -->
+<section class="section section-alt">
+    <div class="container">
+        <div class="section-header">
+            <span class="badge badge-primary">How It Works</span>
+            <h2>Getting Started Is Easy</h2>
+            <p>Book your appointment in minutes and get the care you need.</p>
+        </div>
+        <div class="steps-container">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h4>Create Account</h4>
+                <p>Sign up with your basic information through our secure patient portal.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <h4>Book Appointment</h4>
+                <p>Choose your service, pick a convenient date and time that works for you.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <h4>Make Payment</h4>
+                <p>Securely pay online with credit card or debit card through Stripe.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">4</div>
+                <h4>See Your Provider</h4>
+                <p>Connect via telehealth video or visit in person for your appointment.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features -->
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <span class="badge badge-primary">Why Choose Us</span>
+            <h2>Your Health, Our Priority</h2>
+            <p>We combine clinical expertise with modern technology to deliver exceptional patient care.</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-item">
+                <div class="feature-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <div>
+                    <h4>HIPAA Compliant</h4>
+                    <p>All patient data is encrypted and protected according to federal healthcare privacy standards.</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <div>
+                    <h4>Flexible Scheduling</h4>
+                    <p>Book appointments online 24/7 with same-day telehealth availability for urgent needs.</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                </div>
+                <div>
+                    <h4>Secure Payments</h4>
+                    <p>Pay securely online with credit or debit cards powered by Stripe's trusted payment platform.</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                </div>
+                <div>
+                    <h4>Board Certified NP</h4>
+                    <p>Experienced, board-certified Nurse Practitioner with specialized training and credentials.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Testimonials -->
+<section class="section section-alt">
+    <div class="container">
+        <div class="section-header">
+            <span class="badge badge-primary">Testimonials</span>
+            <h2>What Our Patients Say</h2>
+        </div>
+        <div class="testimonials-grid">
+            <div class="testimonial-card">
+                <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+                <blockquote>"The telehealth experience was seamless. I was able to get my prescription refilled without taking time off work. Highly recommend!"</blockquote>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar">MJ</div>
+                    <div>
+                        <strong>Maria J.</strong>
+                        <span>Telehealth Patient</span>
+                    </div>
+                </div>
+            </div>
+            <div class="testimonial-card">
+                <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+                <blockquote>"Got my DOT physical done quickly and professionally. The online booking made it so easy. I was in and out in under an hour."</blockquote>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar">RK</div>
+                    <div>
+                        <strong>Robert K.</strong>
+                        <span>CDL Driver</span>
+                    </div>
+                </div>
+            </div>
+            <div class="testimonial-card">
+                <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+                <blockquote>"Finally a healthcare provider that respects my time. The online portal is easy to use, and the NP is thorough and caring."</blockquote>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar">SL</div>
+                    <div>
+                        <strong>Sandra L.</strong>
+                        <span>Regular Patient</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+    <div class="container">
+        <h2>Ready to Get Started?</h2>
+        <p>Book your appointment today and experience healthcare designed around your schedule.</p>
+        <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+            <a href="/book" class="btn btn-white btn-lg">Book Appointment</a>
+            <a href="/contact" class="btn btn-lg" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3)">Contact Us</a>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-grid">
+        <div class="footer-brand">
+            <a href="/" class="nav-brand" style="color:#fff">
+                <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
+                    <rect width="36" height="36" rx="8" fill="#0D6EFD"/>
+                    <path d="M18 8v20M8 18h20" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                NP Healthcare
+            </a>
+            <p>Board-certified Nurse Practitioner providing quality telehealth consultations and DOT physical examinations. Your health, our priority.</p>
+        </div>
+        <div>
+            <h4>Services</h4>
+            <ul class="footer-links">
+                <li><a href="/telehealth">Telehealth Visits</a></li>
+                <li><a href="/dot-physicals">DOT Physicals</a></li>
+                <li><a href="/services">All Services</a></li>
+                <li><a href="/book">Book Online</a></li>
+            </ul>
+        </div>
+        <div>
+            <h4>Patients</h4>
+            <ul class="footer-links">
+                <li><a href="/portal">Patient Portal</a></li>
+                <li><a href="/book">Schedule Visit</a></li>
+                <li><a href="/contact">Contact Us</a></li>
+            </ul>
+        </div>
+        <div>
+            <h4>Contact</h4>
+            <ul class="footer-links">
+                <li>(555) 123-4567</li>
+                <li>info@yourpractice.com</li>
+                <li>123 Medical Center Dr<br>Suite 100, City, ST 12345</li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <span>&copy; 2025 NP Healthcare Practice. All rights reserved.</span>
+        <span>HIPAA Compliant | Secure & Encrypted</span>
+    </div>
+</footer>
+
+<script src="/js/main.js"></script>
+</body>
+</html>

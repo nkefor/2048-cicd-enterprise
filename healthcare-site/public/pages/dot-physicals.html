@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOT Physical Exams | NP Healthcare Practice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="/" class="nav-brand">
+        <svg viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="8" fill="#0D6EFD"/><path d="M18 8v20M8 18h20" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+        NP Healthcare
+    </a>
+    <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/services">Services</a></li>
+        <li><a href="/telehealth">Telehealth</a></li>
+        <li><a href="/dot-physicals" class="active">DOT Physicals</a></li>
+        <li><a href="/contact">Contact</a></li>
+    </ul>
+    <div class="nav-actions">
+        <a href="/portal" class="btn btn-outline btn-sm">Patient Login</a>
+        <a href="/book" class="btn btn-primary btn-sm">Book Now</a>
+    </div>
+    <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').classList.toggle('open')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+</nav>
+
+<div class="page-wrapper">
+    <div class="page-header" style="background:linear-gradient(135deg,#14B8A6 0%,#0D6EFD 100%)">
+        <h1>DOT Physical Examinations</h1>
+        <p>FMCSA-certified medical examiner for commercial motor vehicle drivers</p>
+    </div>
+
+    <div class="page-content">
+        <!-- Overview -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center;margin-bottom:3rem">
+            <div>
+                <span class="badge badge-primary">FMCSA Certified</span>
+                <h2 style="font-size:1.75rem;margin-bottom:1rem">Federal DOT Physical Exams</h2>
+                <p style="color:var(--gray);line-height:1.8;margin-bottom:1.5rem">As a certified medical examiner listed on the FMCSA National Registry, I provide thorough DOT physical examinations required for commercial driver's license (CDL) holders. Exams meet all federal requirements under 49 CFR Part 391.</p>
+                <div style="display:flex;gap:1rem;flex-wrap:wrap">
+                    <a href="/book?service=dot_physical" class="btn btn-secondary btn-lg">Schedule DOT Physical</a>
+                    <a href="/contact" class="btn btn-outline">Have Questions?</a>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header" style="background:var(--secondary);color:#fff">Quick Facts</div>
+                <div class="card-body">
+                    <div style="display:flex;flex-direction:column;gap:1rem">
+                        <div style="display:flex;justify-content:space-between;padding-bottom:0.75rem;border-bottom:1px solid #E2E8F0">
+                            <span style="color:var(--gray)">Cost</span>
+                            <strong>$125</strong>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding-bottom:0.75rem;border-bottom:1px solid #E2E8F0">
+                            <span style="color:var(--gray)">Duration</span>
+                            <strong>45-60 minutes</strong>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding-bottom:0.75rem;border-bottom:1px solid #E2E8F0">
+                            <span style="color:var(--gray)">Certificate</span>
+                            <strong>Same day</strong>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding-bottom:0.75rem;border-bottom:1px solid #E2E8F0">
+                            <span style="color:var(--gray)">Valid For</span>
+                            <strong>Up to 2 years</strong>
+                        </div>
+                        <div style="display:flex;justify-content:space-between">
+                            <span style="color:var(--gray)">Walk-ins</span>
+                            <strong>By appointment</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- What's Included -->
+        <div class="card" style="margin-bottom:2rem">
+            <div class="card-header">What the DOT Physical Includes</div>
+            <div class="card-body">
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem">
+                    <div>
+                        <h4 style="margin-bottom:0.75rem;color:var(--secondary)">Health History Review</h4>
+                        <ul style="list-style:none;display:flex;flex-direction:column;gap:0.5rem;color:var(--gray);font-size:0.95rem">
+                            <li>&#8226; Complete medical history</li>
+                            <li>&#8226; Medication review</li>
+                            <li>&#8226; Surgical history</li>
+                            <li>&#8226; Current health conditions</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom:0.75rem;color:var(--secondary)">Physical Examination</h4>
+                        <ul style="list-style:none;display:flex;flex-direction:column;gap:0.5rem;color:var(--gray);font-size:0.95rem">
+                            <li>&#8226; Vision testing (Snellen)</li>
+                            <li>&#8226; Hearing test (whisper)</li>
+                            <li>&#8226; Blood pressure & pulse</li>
+                            <li>&#8226; Complete physical exam</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom:0.75rem;color:var(--secondary)">Lab & Documentation</h4>
+                        <ul style="list-style:none;display:flex;flex-direction:column;gap:0.5rem;color:var(--gray);font-size:0.95rem">
+                            <li>&#8226; Urinalysis testing</li>
+                            <li>&#8226; Medical Examiner Certificate</li>
+                            <li>&#8226; Long Form (MCSA-5875)</li>
+                            <li>&#8226; FMCSA reporting</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- What to Bring -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-bottom:3rem">
+            <div class="card">
+                <div class="card-header">What to Bring</div>
+                <div class="card-body">
+                    <ul style="list-style:none;display:flex;flex-direction:column;gap:0.75rem">
+                        <li style="display:flex;align-items:flex-start;gap:0.5rem"><span style="color:var(--success);font-size:1.1rem">&#10003;</span> <div>Valid photo ID (driver's license)</div></li>
+                        <li style="display:flex;align-items:flex-start;gap:0.5rem"><span style="color:var(--success);font-size:1.1rem">&#10003;</span> <div>List of all current medications</div></li>
+                        <li style="display:flex;align-items:flex-start;gap:0.5rem"><span style="color:var(--success);font-size:1.1rem">&#10003;</span> <div>Corrective lenses (if you wear them)</div></li>
+                        <li style="display:flex;align-items:flex-start;gap:0.5rem"><span style="color:var(--success);font-size:1.1rem">&#10003;</span> <div>Hearing aids (if you use them)</div></li>
+                        <li style="display:flex;align-items:flex-start;gap:0.5rem"><span style="color:var(--success);font-size:1.1rem">&#10003;</span> <div>Documentation from specialists (if applicable)</div></li>
+                        <li style="display:flex;align-items:flex-start;gap:0.5rem"><span style="color:var(--success);font-size:1.1rem">&#10003;</span> <div>Previous DOT medical card (if renewing)</div></li>
+                        <li style="display:flex;align-items:flex-start;gap:0.5rem"><span style="color:var(--success);font-size:1.1rem">&#10003;</span> <div>CPAP/BiPAP compliance data (if applicable)</div></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">Common Conditions & Waivers</div>
+                <div class="card-body">
+                    <p style="color:var(--gray);margin-bottom:1rem;font-size:0.95rem">Certain conditions may require additional documentation or waivers. If you have any of the following, bring relevant records:</p>
+                    <ul style="list-style:none;display:flex;flex-direction:column;gap:0.5rem;color:var(--gray);font-size:0.95rem">
+                        <li>&#8226; Diabetes (insulin or non-insulin)</li>
+                        <li>&#8226; Heart conditions or surgery</li>
+                        <li>&#8226; Sleep apnea (bring CPAP data)</li>
+                        <li>&#8226; Seizure history</li>
+                        <li>&#8226; Vision impairment (bring ophthalmologist letter)</li>
+                        <li>&#8226; Hearing loss (bring audiogram)</li>
+                    </ul>
+                    <p style="color:var(--gray);margin-top:1rem;font-size:0.9rem"><em>Contact us before your appointment if you have questions about specific conditions.</em></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- FAQ -->
+        <div class="card" style="margin-bottom:3rem">
+            <div class="card-header">Frequently Asked Questions</div>
+            <div class="card-body">
+                <div style="display:flex;flex-direction:column;gap:1.5rem">
+                    <div>
+                        <h4 style="margin-bottom:0.5rem">How long is a DOT medical certificate valid?</h4>
+                        <p style="color:var(--gray);font-size:0.95rem">A DOT medical certificate is typically valid for up to 2 years. However, certain medical conditions (such as high blood pressure or diabetes) may result in a shorter certification period (usually 1 year) requiring more frequent exams.</p>
+                    </div>
+                    <div style="border-top:1px solid #E2E8F0;padding-top:1.5rem">
+                        <h4 style="margin-bottom:0.5rem">Can I fail a DOT physical?</h4>
+                        <p style="color:var(--gray);font-size:0.95rem">Yes, it is possible to not meet the medical standards. Common reasons include uncontrolled blood pressure (over 180/110), vision that cannot be corrected to 20/40, and hearing loss. We work with you to address concerns and explore exemptions when applicable.</p>
+                    </div>
+                    <div style="border-top:1px solid #E2E8F0;padding-top:1.5rem">
+                        <h4 style="margin-bottom:0.5rem">Do I need to fast before the exam?</h4>
+                        <p style="color:var(--gray);font-size:0.95rem">No fasting is required for a standard DOT physical. The urinalysis checks for glucose, protein, and other markers but does not require fasting. However, if your provider has ordered additional blood work, they may advise fasting.</p>
+                    </div>
+                    <div style="border-top:1px solid #E2E8F0;padding-top:1.5rem">
+                        <h4 style="margin-bottom:0.5rem">Is the DOT physical the same as a drug test?</h4>
+                        <p style="color:var(--gray);font-size:0.95rem">No. The DOT physical urinalysis tests for glucose, protein, and other health markers only. DOT drug testing is a separate process arranged by your employer. We do not perform DOT drug testing at this location.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CTA -->
+        <div style="text-align:center;background:var(--light);border-radius:20px;padding:3rem">
+            <h2 style="font-size:1.75rem;margin-bottom:0.5rem">Schedule Your DOT Physical</h2>
+            <div class="service-price" style="font-size:2.5rem">$125 <span style="font-size:1rem">per exam</span></div>
+            <p style="color:var(--gray);margin-bottom:1.5rem">Same-day medical examiner certificate upon passing</p>
+            <a href="/book?service=dot_physical" class="btn btn-secondary btn-lg">Book DOT Physical</a>
+        </div>
+    </div>
+</div>
+
+<footer class="footer">
+    <div class="footer-bottom" style="border-top:none;padding-top:0">
+        <span>&copy; 2025 NP Healthcare Practice. All rights reserved.</span>
+        <span>HIPAA Compliant | FMCSA Certified</span>
+    </div>
+</footer>
+
+<script src="/js/main.js"></script>
+</body>
+</html>

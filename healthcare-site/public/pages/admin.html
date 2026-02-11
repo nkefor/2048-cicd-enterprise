@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Provider Dashboard | NP Healthcare Practice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+<nav class="navbar" style="background:var(--dark)">
+    <a href="/" class="nav-brand" style="color:#fff">
+        <svg viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="8" fill="#0D6EFD"/><path d="M18 8v20M8 18h20" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+        NP Admin
+    </a>
+    <ul class="nav-links">
+        <li><a href="#" onclick="showAdminTab('dashboard')" style="color:#94A3B8">Dashboard</a></li>
+        <li><a href="#" onclick="showAdminTab('appointments')" style="color:#94A3B8">Appointments</a></li>
+        <li><a href="#" onclick="showAdminTab('patients')" style="color:#94A3B8">Patients</a></li>
+        <li><a href="#" onclick="showAdminTab('dot-records')" style="color:#94A3B8">DOT Records</a></li>
+        <li><a href="#" onclick="showAdminTab('messages')" style="color:#94A3B8">Messages</a></li>
+    </ul>
+    <div class="nav-actions">
+        <span id="admin-name" style="color:#94A3B8;font-size:0.9rem"></span>
+        <button onclick="Auth.adminLogout()" class="btn btn-sm btn-danger">Logout</button>
+    </div>
+    <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').classList.toggle('open')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+</nav>
+
+<div class="page-wrapper">
+    <!-- Login Form -->
+    <div id="admin-login" style="max-width:400px;margin:6rem auto;padding:0 2rem">
+        <div class="card">
+            <div class="card-header">Provider Login</div>
+            <div class="card-body">
+                <div id="admin-alerts"></div>
+                <form onsubmit="adminLogin(event)">
+                    <div class="form-group">
+                        <label for="admin-username">Username or Email</label>
+                        <input type="text" id="admin-username" class="form-control" required placeholder="admin">
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-password">Password</label>
+                        <input type="password" id="admin-password" class="form-control" required placeholder="Password">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%">Sign In</button>
+                </form>
+                <p style="text-align:center;margin-top:1rem;font-size:0.85rem;color:var(--gray)">Default: admin / changeme123</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="admin-dashboard" style="display:none;padding:2rem;max-width:1200px;margin:0 auto">
+        <div id="admin-content-alerts"></div>
+
+        <!-- Dashboard Tab -->
+        <div class="admin-tab" id="admin-tab-dashboard">
+            <h2 style="font-size:1.5rem;margin-bottom:1.5rem">Provider Dashboard</h2>
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-card">
+                    <h4>Total Patients</h4>
+                    <div class="stat-value" id="stat-patients">-</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Today's Appointments</h4>
+                    <div class="stat-value" id="stat-today">-</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Pending Appointments</h4>
+                    <div class="stat-value" id="stat-pending">-</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Total Revenue</h4>
+                    <div class="stat-value" id="stat-revenue">-</div>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+                <div class="card">
+                    <div class="card-header">Upcoming Appointments</div>
+                    <div class="card-body" id="admin-upcoming"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header">Recent Payments</div>
+                    <div class="card-body" id="admin-payments"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Appointments Tab -->
+        <div class="admin-tab" id="admin-tab-appointments" style="display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+                <h2 style="font-size:1.5rem">All Appointments</h2>
+                <div style="display:flex;gap:0.5rem">
+                    <input type="date" id="filter-date" class="form-control" style="width:auto" onchange="loadAdminAppointments()">
+                    <select id="filter-status" class="form-control" style="width:auto" onchange="loadAdminAppointments()">
+                        <option value="">All Statuses</option>
+                        <option value="scheduled">Scheduled</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body" id="admin-all-appts"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <!-- Patients Tab -->
+        <div class="admin-tab" id="admin-tab-patients" style="display:none">
+            <h2 style="font-size:1.5rem;margin-bottom:1.5rem">Patient Records</h2>
+            <div class="card">
+                <div class="card-body" id="admin-patients-list"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <!-- DOT Records Tab -->
+        <div class="admin-tab" id="admin-tab-dot-records" style="display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+                <h2 style="font-size:1.5rem">DOT Physical Records</h2>
+            </div>
+            <div class="card">
+                <div class="card-body" id="admin-dot-records"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <!-- Messages Tab -->
+        <div class="admin-tab" id="admin-tab-messages" style="display:none">
+            <h2 style="font-size:1.5rem;margin-bottom:1.5rem">Patient Messages</h2>
+            <div class="card">
+                <div class="card-body" id="admin-messages-list"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/js/main.js"></script>
+<script>
+const serviceNames = {
+    telehealth: 'Telehealth', dot_physical: 'DOT Physical',
+    consultation: 'Consultation', follow_up: 'Follow-Up'
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (Auth.isAdminLoggedIn()) {
+        showAdminDashboard();
+    }
+});
+
+async function adminLogin(e) {
+    e.preventDefault();
+    try {
+        const data = await api('/api/auth/admin/login', {
+            method: 'POST',
+            body: JSON.stringify({
+                username: document.getElementById('admin-username').value,
+                password: document.getElementById('admin-password').value
+            })
+        });
+        Auth.setAdmin(data.token, data.admin);
+        showAdminDashboard();
+    } catch (err) {
+        showAlert(document.getElementById('admin-alerts'), err.message, 'error');
+    }
+}
+
+function showAdminDashboard() {
+    document.getElementById('admin-login').style.display = 'none';
+    document.getElementById('admin-dashboard').style.display = 'block';
+
+    const admin = Auth.getAdmin();
+    if (admin) {
+        document.getElementById('admin-name').textContent = `${admin.first_name} ${admin.last_name}, ${admin.credentials || 'NP'}`;
+    }
+
+    loadDashboardData();
+}
+
+function showAdminTab(tab) {
+    document.querySelectorAll('.admin-tab').forEach(t => t.style.display = 'none');
+    document.getElementById(`admin-tab-${tab}`).style.display = 'block';
+
+    if (tab === 'dashboard') loadDashboardData();
+    if (tab === 'appointments') loadAdminAppointments();
+    if (tab === 'patients') loadAdminPatients();
+    if (tab === 'dot-records') loadDotRecords();
+    if (tab === 'messages') loadAdminMessages();
+}
+
+async function loadDashboardData() {
+    try {
+        const data = await api('/api/admin/dashboard', { adminAuth: true });
+
+        document.getElementById('stat-patients').textContent = data.stats.total_patients;
+        document.getElementById('stat-today').textContent = data.stats.today_appointments;
+        document.getElementById('stat-pending').textContent = data.stats.pending_appointments;
+        document.getElementById('stat-revenue').textContent = `$${data.stats.total_revenue.toFixed(2)}`;
+
+        const upEl = document.getElementById('admin-upcoming');
+        if (data.recent_appointments.length === 0) {
+            upEl.innerHTML = '<p style="color:var(--gray)">No upcoming appointments</p>';
+        } else {
+            upEl.innerHTML = data.recent_appointments.map(a => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid #E2E8F0">
+                    <div>
+                        <strong>${a.first_name} ${a.last_name}</strong>
+                        <div style="font-size:0.85rem;color:var(--gray)">${serviceNames[a.service_type]} - ${formatDate(a.appointment_date)} ${formatTime(a.appointment_time)}</div>
+                    </div>
+                    <span class="status status-${a.status}">${a.status}</span>
+                </div>
+            `).join('');
+        }
+
+        const payEl = document.getElementById('admin-payments');
+        if (data.recent_payments.length === 0) {
+            payEl.innerHTML = '<p style="color:var(--gray)">No payments</p>';
+        } else {
+            payEl.innerHTML = data.recent_payments.map(p => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid #E2E8F0">
+                    <div>
+                        <strong>${p.first_name} ${p.last_name}</strong>
+                        <div style="font-size:0.85rem;color:var(--gray)">${p.description || 'Payment'}</div>
+                    </div>
+                    <div style="text-align:right">
+                        <strong>${formatCurrency(p.amount)}</strong>
+                        <div><span class="status status-${p.status}">${p.status}</span></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (err) {
+        console.error('Dashboard error:', err);
+    }
+}
+
+async function loadAdminAppointments() {
+    try {
+        const date = document.getElementById('filter-date').value;
+        const status = document.getElementById('filter-status').value;
+        let url = '/api/appointments/all?';
+        if (date) url += `date=${date}&`;
+        if (status) url += `status=${status}&`;
+
+        const appts = await api(url, { adminAuth: true });
+        const el = document.getElementById('admin-all-appts');
+
+        if (appts.length === 0) {
+            el.innerHTML = '<p style="color:var(--gray);text-align:center">No appointments found</p>';
+            return;
+        }
+
+        el.innerHTML = `<div class="table-container"><table>
+            <thead><tr><th>Patient</th><th>Service</th><th>Date</th><th>Time</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>${appts.map(a => `
+                <tr>
+                    <td><strong>${a.first_name} ${a.last_name}</strong><br><span style="font-size:0.8rem;color:var(--gray)">${a.email}</span></td>
+                    <td>${serviceNames[a.service_type]}</td>
+                    <td>${formatDate(a.appointment_date)}</td>
+                    <td>${formatTime(a.appointment_time)}</td>
+                    <td><span class="status status-${a.status}">${a.status}</span></td>
+                    <td>
+                        <select onchange="updateApptStatus(${a.id}, this.value)" class="form-control" style="width:auto;padding:0.25rem 0.5rem;font-size:0.8rem">
+                            <option value="">Change</option>
+                            <option value="confirmed">Confirm</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Complete</option>
+                            <option value="no_show">No Show</option>
+                            <option value="cancelled">Cancel</option>
+                        </select>
+                    </td>
+                </tr>
+            `).join('')}</tbody>
+        </table></div>`;
+    } catch (err) {
+        console.error('Appointments error:', err);
+    }
+}
+
+async function updateApptStatus(id, status) {
+    if (!status) return;
+    try {
+        await api(`/api/appointments/${id}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status }),
+            adminAuth: true
+        });
+        loadAdminAppointments();
+    } catch (err) {
+        showAlert(document.getElementById('admin-content-alerts'), err.message, 'error');
+    }
+}
+
+async function loadAdminPatients() {
+    try {
+        const patients = await api('/api/patients/all', { adminAuth: true });
+        const el = document.getElementById('admin-patients-list');
+
+        if (patients.length === 0) {
+            el.innerHTML = '<p style="color:var(--gray);text-align:center">No patients registered</p>';
+            return;
+        }
+
+        el.innerHTML = `<div class="table-container"><table>
+            <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>DOB</th><th>Insurance</th><th>Registered</th></tr></thead>
+            <tbody>${patients.map(p => `
+                <tr>
+                    <td><strong>${p.first_name} ${p.last_name}</strong></td>
+                    <td>${p.email}</td>
+                    <td>${p.phone || '-'}</td>
+                    <td>${p.date_of_birth || '-'}</td>
+                    <td>${p.insurance_provider || '-'}</td>
+                    <td>${new Date(p.created_at).toLocaleDateString()}</td>
+                </tr>
+            `).join('')}</tbody>
+        </table></div>`;
+    } catch (err) {
+        console.error('Patients error:', err);
+    }
+}
+
+async function loadDotRecords() {
+    try {
+        const records = await api('/api/admin/dot-records', { adminAuth: true });
+        const el = document.getElementById('admin-dot-records');
+
+        if (records.length === 0) {
+            el.innerHTML = '<p style="color:var(--gray);text-align:center">No DOT physical records yet</p>';
+            return;
+        }
+
+        el.innerHTML = `<div class="table-container"><table>
+            <thead><tr><th>Patient</th><th>Exam Date</th><th>BP</th><th>Vision</th><th>Hearing</th><th>Determination</th><th>Certificate</th></tr></thead>
+            <tbody>${records.map(r => `
+                <tr>
+                    <td><strong>${r.first_name} ${r.last_name}</strong></td>
+                    <td>${formatDate(r.exam_date)}</td>
+                    <td>${r.blood_pressure_systolic}/${r.blood_pressure_diastolic}</td>
+                    <td>${r.vision_test_passed ? '<span style="color:var(--success)">Pass</span>' : '<span style="color:var(--danger)">Fail</span>'}</td>
+                    <td>${r.hearing_test_passed ? '<span style="color:var(--success)">Pass</span>' : '<span style="color:var(--danger)">Fail</span>'}</td>
+                    <td><span class="status status-${r.medical_determination === 'qualified' ? 'confirmed' : 'pending'}">${r.medical_determination}</span></td>
+                    <td>${r.certificate_issued ? 'Issued' : 'Pending'}</td>
+                </tr>
+            `).join('')}</tbody>
+        </table></div>`;
+    } catch (err) {
+        console.error('DOT records error:', err);
+    }
+}
+
+async function loadAdminMessages() {
+    try {
+        const messages = await api('/api/admin/messages', { adminAuth: true });
+        const el = document.getElementById('admin-messages-list');
+
+        if (messages.length === 0) {
+            el.innerHTML = '<p style="color:var(--gray);text-align:center">No messages</p>';
+            return;
+        }
+
+        el.innerHTML = messages.map(m => `
+            <div style="padding:1rem;border-bottom:1px solid #E2E8F0;${!m.is_read && m.sender_type === 'patient' ? 'background:rgba(13,110,253,0.03);border-left:3px solid var(--primary)' : ''}">
+                <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
+                    <div>
+                        <strong>${m.first_name} ${m.last_name}</strong>
+                        <span style="font-size:0.85rem;color:var(--gray);margin-left:0.5rem">${m.sender_type === 'provider' ? '(Your Reply)' : ''}</span>
+                    </div>
+                    <span style="font-size:0.85rem;color:var(--gray)">${new Date(m.created_at).toLocaleString()}</span>
+                </div>
+                <p style="font-weight:600;margin-bottom:0.25rem">${m.subject || 'No Subject'}</p>
+                <p style="color:var(--gray);font-size:0.95rem;margin-bottom:0.75rem">${m.body}</p>
+                ${m.sender_type === 'patient' ? `
+                    <div style="display:flex;gap:0.5rem">
+                        <button onclick="this.parentElement.nextElementSibling.style.display='block';this.style.display='none'" class="btn btn-primary btn-sm">Reply</button>
+                        ${!m.is_read ? `<button onclick="markRead(${m.id})" class="btn btn-outline btn-sm">Mark Read</button>` : ''}
+                    </div>
+                    <div style="display:none;margin-top:0.75rem">
+                        <textarea id="reply-${m.patient_id}" class="form-control" placeholder="Type your reply..." style="min-height:80px;margin-bottom:0.5rem"></textarea>
+                        <button onclick="replyMessage(${m.patient_id})" class="btn btn-primary btn-sm">Send Reply</button>
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Messages error:', err);
+    }
+}
+
+async function markRead(id) {
+    try {
+        await api(`/api/admin/messages/${id}/read`, { method: 'PATCH', adminAuth: true });
+        loadAdminMessages();
+    } catch (err) {
+        console.error('Mark read error:', err);
+    }
+}
+
+async function replyMessage(patientId) {
+    const body = document.getElementById(`reply-${patientId}`).value;
+    if (!body) return;
+    try {
+        await api(`/api/admin/messages/${patientId}`, {
+            method: 'POST',
+            body: JSON.stringify({ subject: 'Reply', body }),
+            adminAuth: true
+        });
+        showAlert(document.getElementById('admin-content-alerts'), 'Reply sent', 'success');
+        loadAdminMessages();
+    } catch (err) {
+        showAlert(document.getElementById('admin-content-alerts'), err.message, 'error');
+    }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telehealth Services | NP Healthcare Practice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="/" class="nav-brand">
+        <svg viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="8" fill="#0D6EFD"/><path d="M18 8v20M8 18h20" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+        NP Healthcare
+    </a>
+    <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/services">Services</a></li>
+        <li><a href="/telehealth" class="active">Telehealth</a></li>
+        <li><a href="/dot-physicals">DOT Physicals</a></li>
+        <li><a href="/contact">Contact</a></li>
+    </ul>
+    <div class="nav-actions">
+        <a href="/portal" class="btn btn-outline btn-sm">Patient Login</a>
+        <a href="/book" class="btn btn-primary btn-sm">Book Now</a>
+    </div>
+    <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').classList.toggle('open')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+</nav>
+
+<div class="page-wrapper">
+    <div class="page-header" style="background:linear-gradient(135deg,#0D6EFD 0%,#6366F1 100%)">
+        <h1>Telehealth Services</h1>
+        <p>Professional healthcare from the comfort of your home via secure video consultation</p>
+    </div>
+
+    <div class="page-content">
+        <!-- What is Telehealth -->
+        <div style="text-align:center;max-width:700px;margin:0 auto 3rem">
+            <h2 style="font-size:1.75rem;margin-bottom:1rem">See Your Provider Without Leaving Home</h2>
+            <p style="color:var(--gray);line-height:1.8">Telehealth connects you with your healthcare provider through a secure video call. It is the same quality care as an in-person visit, just more convenient. All you need is a smartphone, tablet, or computer with a camera.</p>
+        </div>
+
+        <!-- Conditions Treated -->
+        <div class="card" style="margin-bottom:2rem">
+            <div class="card-header">Conditions We Treat via Telehealth</div>
+            <div class="card-body">
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem">
+                    <div>
+                        <h4 style="margin-bottom:0.75rem;color:var(--primary)">Acute Conditions</h4>
+                        <ul style="list-style:none;display:flex;flex-direction:column;gap:0.5rem;color:var(--gray)">
+                            <li>&#8226; Cold & Flu symptoms</li>
+                            <li>&#8226; Sinus infections</li>
+                            <li>&#8226; Urinary tract infections</li>
+                            <li>&#8226; Allergies</li>
+                            <li>&#8226; Skin rashes</li>
+                            <li>&#8226; Pink eye</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom:0.75rem;color:var(--primary)">Chronic Management</h4>
+                        <ul style="list-style:none;display:flex;flex-direction:column;gap:0.5rem;color:var(--gray)">
+                            <li>&#8226; Diabetes management</li>
+                            <li>&#8226; Hypertension</li>
+                            <li>&#8226; Thyroid disorders</li>
+                            <li>&#8226; Asthma/COPD</li>
+                            <li>&#8226; High cholesterol</li>
+                            <li>&#8226; Arthritis</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom:0.75rem;color:var(--primary)">Other Services</h4>
+                        <ul style="list-style:none;display:flex;flex-direction:column;gap:0.5rem;color:var(--gray)">
+                            <li>&#8226; Medication refills</li>
+                            <li>&#8226; Lab result review</li>
+                            <li>&#8226; Follow-up visits</li>
+                            <li>&#8226; Mental health screening</li>
+                            <li>&#8226; Wellness check-ins</li>
+                            <li>&#8226; Health education</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- How Telehealth Works -->
+        <h2 style="text-align:center;font-size:1.75rem;margin-bottom:2rem">How Your Telehealth Visit Works</h2>
+        <div class="steps-container" style="margin-bottom:3rem">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h4>Book Online</h4>
+                <p>Choose a telehealth visit and pick your preferred date and time.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <h4>Complete Intake</h4>
+                <p>Fill out your health information and consent forms digitally.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <h4>Join Video Call</h4>
+                <p>Click your session link at appointment time to connect with your provider.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">4</div>
+                <h4>Get Care Plan</h4>
+                <p>Receive your treatment plan, prescriptions, and follow-up instructions.</p>
+            </div>
+        </div>
+
+        <!-- Requirements -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-bottom:3rem">
+            <div class="card">
+                <div class="card-header">What You Need</div>
+                <div class="card-body">
+                    <ul style="list-style:none;display:flex;flex-direction:column;gap:0.75rem">
+                        <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success)">&#10003;</span> Device with camera (phone, tablet, or computer)</li>
+                        <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success)">&#10003;</span> Stable internet connection</li>
+                        <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success)">&#10003;</span> Quiet, private location</li>
+                        <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success)">&#10003;</span> Current medication list</li>
+                        <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success)">&#10003;</span> Insurance card (if applicable)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">Privacy & Security</div>
+                <div class="card-body">
+                    <ul style="list-style:none;display:flex;flex-direction:column;gap:0.75rem">
+                        <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--primary)">&#9679;</span> HIPAA-compliant video platform</li>
+                        <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--primary)">&#9679;</span> End-to-end encrypted sessions</li>
+                        <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--primary)">&#9679;</span> Sessions are not recorded</li>
+                        <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--primary)">&#9679;</span> Secure patient portal access</li>
+                        <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--primary)">&#9679;</span> Protected health information</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pricing -->
+        <div style="text-align:center;background:var(--light);border-radius:20px;padding:3rem;margin-bottom:2rem">
+            <h2 style="font-size:1.75rem;margin-bottom:0.5rem">Telehealth Visit</h2>
+            <div class="service-price" style="font-size:2.5rem">$150 <span style="font-size:1rem">per visit</span></div>
+            <p style="color:var(--gray);margin-bottom:1.5rem">30-minute video consultation with your Nurse Practitioner</p>
+            <a href="/book?service=telehealth" class="btn btn-primary btn-lg">Book Telehealth Visit</a>
+        </div>
+    </div>
+</div>
+
+<section class="cta-section">
+    <div class="container">
+        <h2>Questions About Telehealth?</h2>
+        <p>Contact us and we will be happy to answer any questions about our virtual care services.</p>
+        <a href="/contact" class="btn btn-white btn-lg">Contact Us</a>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="footer-bottom" style="border-top:none;padding-top:0">
+        <span>&copy; 2025 NP Healthcare Practice. All rights reserved.</span>
+        <span>HIPAA Compliant | Secure & Encrypted</span>
+    </div>
+</footer>
+
+<script src="/js/main.js"></script>
+</body>
+</html>

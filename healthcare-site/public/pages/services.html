@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Services | NP Healthcare Practice</title>
+    <meta name="description" content="Comprehensive healthcare services including telehealth consultations, DOT physical exams, and general wellness visits.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="/" class="nav-brand">
+        <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="36" height="36" rx="8" fill="#0D6EFD"/><path d="M18 8v20M8 18h20" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+        NP Healthcare
+    </a>
+    <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/services" class="active">Services</a></li>
+        <li><a href="/telehealth">Telehealth</a></li>
+        <li><a href="/dot-physicals">DOT Physicals</a></li>
+        <li><a href="/contact">Contact</a></li>
+    </ul>
+    <div class="nav-actions">
+        <a href="/portal" class="btn btn-outline btn-sm">Patient Login</a>
+        <a href="/book" class="btn btn-primary btn-sm">Book Now</a>
+    </div>
+    <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').classList.toggle('open')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+</nav>
+
+<div class="page-wrapper">
+    <div class="page-header">
+        <h1>Our Services</h1>
+        <p>Comprehensive healthcare solutions tailored to your needs</p>
+    </div>
+
+    <div class="page-content">
+        <!-- Telehealth -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center;margin-bottom:4rem">
+            <div>
+                <span class="badge badge-primary">Virtual Care</span>
+                <h2 style="font-size:1.75rem;margin-bottom:1rem">Telehealth Consultations</h2>
+                <p style="color:var(--gray);margin-bottom:1.5rem;line-height:1.8">Connect with your provider from the comfort of your home. Our secure, HIPAA-compliant video platform makes it easy to get the care you need without the commute.</p>
+                <ul style="list-style:none;display:flex;flex-direction:column;gap:0.75rem;margin-bottom:1.5rem">
+                    <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success);font-size:1.2rem">&#10003;</span> Acute illness visits (cold, flu, UTI, etc.)</li>
+                    <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success);font-size:1.2rem">&#10003;</span> Chronic disease management</li>
+                    <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success);font-size:1.2rem">&#10003;</span> Medication management & refills</li>
+                    <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success);font-size:1.2rem">&#10003;</span> Follow-up visits</li>
+                    <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success);font-size:1.2rem">&#10003;</span> Mental health screenings</li>
+                </ul>
+                <div style="display:flex;align-items:center;gap:1.5rem">
+                    <div class="service-price" style="margin:0">$150 <span>per visit</span></div>
+                    <a href="/book?service=telehealth" class="btn btn-primary">Book Telehealth Visit</a>
+                </div>
+            </div>
+            <div style="background:linear-gradient(135deg,#0D6EFD,#6366F1);border-radius:20px;padding:3rem;color:#fff;text-align:center">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:1.5rem"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <h3 style="font-size:1.5rem;margin-bottom:0.75rem">Video Visits</h3>
+                <p style="opacity:0.9">Available Monday - Friday, 9 AM - 5 PM. Same-day appointments often available.</p>
+            </div>
+        </div>
+
+        <!-- DOT Physicals -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center;margin-bottom:4rem">
+            <div style="background:linear-gradient(135deg,#14B8A6,#0D6EFD);border-radius:20px;padding:3rem;color:#fff;text-align:center">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:1.5rem"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <h3 style="font-size:1.5rem;margin-bottom:0.75rem">DOT Certified</h3>
+                <p style="opacity:0.9">FMCSA National Registry certified medical examiner. Quick results, same-day certificates.</p>
+            </div>
+            <div>
+                <span class="badge badge-primary">In-Person</span>
+                <h2 style="font-size:1.75rem;margin-bottom:1rem">DOT Physical Examinations</h2>
+                <p style="color:var(--gray);margin-bottom:1.5rem;line-height:1.8">FMCSA-certified DOT physical examinations for commercial motor vehicle (CMV) drivers. We ensure thorough, compliant exams so you can get back on the road.</p>
+                <ul style="list-style:none;display:flex;flex-direction:column;gap:0.75rem;margin-bottom:1.5rem">
+                    <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success);font-size:1.2rem">&#10003;</span> FMCSA National Registry listed examiner</li>
+                    <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success);font-size:1.2rem">&#10003;</span> CDL medical certification</li>
+                    <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success);font-size:1.2rem">&#10003;</span> Vision & hearing testing on-site</li>
+                    <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success);font-size:1.2rem">&#10003;</span> Urinalysis testing available</li>
+                    <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success);font-size:1.2rem">&#10003;</span> Same-day medical certificates</li>
+                </ul>
+                <div style="display:flex;align-items:center;gap:1.5rem">
+                    <div class="service-price" style="margin:0">$125 <span>per exam</span></div>
+                    <a href="/book?service=dot_physical" class="btn btn-secondary">Schedule DOT Physical</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- General Consultation -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center;margin-bottom:4rem">
+            <div>
+                <span class="badge badge-primary">Wellness</span>
+                <h2 style="font-size:1.75rem;margin-bottom:1rem">General Consultations</h2>
+                <p style="color:var(--gray);margin-bottom:1.5rem;line-height:1.8">Comprehensive health evaluations and preventive care. Whether you need a routine checkup or have specific health concerns, we are here to help.</p>
+                <ul style="list-style:none;display:flex;flex-direction:column;gap:0.75rem;margin-bottom:1.5rem">
+                    <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success);font-size:1.2rem">&#10003;</span> Annual wellness exams</li>
+                    <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success);font-size:1.2rem">&#10003;</span> Preventive health screenings</li>
+                    <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success);font-size:1.2rem">&#10003;</span> Chronic condition management</li>
+                    <li style="display:flex;align-items:center;gap:0.5rem"><span style="color:var(--success);font-size:1.2rem">&#10003;</span> Lab work orders & review</li>
+                </ul>
+                <div style="display:flex;align-items:center;gap:1.5rem">
+                    <div class="service-price" style="margin:0">$100 <span>per visit</span></div>
+                    <a href="/book?service=consultation" class="btn btn-outline">Book Consultation</a>
+                </div>
+            </div>
+            <div style="background:linear-gradient(135deg,#6366F1,#14B8A6);border-radius:20px;padding:3rem;color:#fff;text-align:center">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:1.5rem"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <h3 style="font-size:1.5rem;margin-bottom:0.75rem">Personalized Care</h3>
+                <p style="opacity:0.9">Thorough evaluations with individualized treatment plans tailored to your health goals.</p>
+            </div>
+        </div>
+
+        <!-- Pricing Summary -->
+        <div class="card" style="margin-top:3rem">
+            <div class="card-header">
+                <h3 style="font-size:1.25rem;margin:0">Service Pricing</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Service</th>
+                                <th>Duration</th>
+                                <th>Price</th>
+                                <th>Type</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Telehealth Consultation</strong></td>
+                                <td>30 minutes</td>
+                                <td><strong>$150</strong></td>
+                                <td>Virtual</td>
+                                <td><a href="/book?service=telehealth" class="btn btn-primary btn-sm">Book</a></td>
+                            </tr>
+                            <tr>
+                                <td><strong>DOT Physical Exam</strong></td>
+                                <td>60 minutes</td>
+                                <td><strong>$125</strong></td>
+                                <td>In-Person</td>
+                                <td><a href="/book?service=dot_physical" class="btn btn-secondary btn-sm">Book</a></td>
+                            </tr>
+                            <tr>
+                                <td><strong>General Consultation</strong></td>
+                                <td>30 minutes</td>
+                                <td><strong>$100</strong></td>
+                                <td>In-Person / Virtual</td>
+                                <td><a href="/book?service=consultation" class="btn btn-outline btn-sm">Book</a></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Follow-Up Visit</strong></td>
+                                <td>15-30 minutes</td>
+                                <td><strong>$75</strong></td>
+                                <td>In-Person / Virtual</td>
+                                <td><a href="/book?service=follow_up" class="btn btn-outline btn-sm">Book</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p style="color:var(--gray);font-size:0.9rem;margin-top:1rem">* Payment is due at the time of service. We accept all major credit and debit cards.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CTA -->
+<section class="cta-section">
+    <div class="container">
+        <h2>Ready to Book Your Visit?</h2>
+        <p>Schedule online in minutes. Same-day telehealth appointments available.</p>
+        <a href="/book" class="btn btn-white btn-lg">Book Appointment</a>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="footer-bottom" style="border-top:none;padding-top:0">
+        <span>&copy; 2025 NP Healthcare Practice. All rights reserved.</span>
+        <span>HIPAA Compliant | Secure & Encrypted</span>
+    </div>
+</footer>
+
+<script src="/js/main.js"></script>
+</body>
+</html>

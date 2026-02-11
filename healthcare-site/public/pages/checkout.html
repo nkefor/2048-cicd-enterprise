@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout | NP Healthcare Practice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+    <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="/" class="nav-brand">
+        <svg viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="8" fill="#0D6EFD"/><path d="M18 8v20M8 18h20" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+        NP Healthcare
+    </a>
+    <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/services">Services</a></li>
+        <li><a href="/portal">My Portal</a></li>
+    </ul>
+    <div class="nav-actions"></div>
+    <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').classList.toggle('open')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+</nav>
+
+<div class="page-wrapper">
+    <div class="page-header">
+        <h1>Complete Payment</h1>
+        <p>Secure payment processing powered by Stripe</p>
+    </div>
+
+    <div class="page-content" style="max-width:600px">
+        <div id="checkout-alerts"></div>
+
+        <!-- Order Summary -->
+        <div class="card" style="margin-bottom:1.5rem">
+            <div class="card-header">Order Summary</div>
+            <div class="card-body">
+                <div id="order-summary">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Section -->
+        <div class="card" id="payment-card">
+            <div class="card-header">
+                Payment Information
+                <span style="display:flex;align-items:center;gap:0.25rem;font-size:0.8rem;color:var(--gray);font-weight:400">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    Secure
+                </span>
+            </div>
+            <div class="card-body">
+                <!-- Demo mode payment -->
+                <div id="demo-payment" style="display:none">
+                    <div class="alert alert-info" style="margin-bottom:1.5rem">
+                        <strong>Demo Mode</strong> - Stripe is not configured. Click below to simulate a payment.
+                    </div>
+                    <button onclick="confirmDemoPayment()" class="btn btn-primary btn-lg" style="width:100%" id="demo-pay-btn">
+                        Complete Demo Payment
+                    </button>
+                </div>
+
+                <!-- Live Stripe payment -->
+                <div id="stripe-payment" style="display:none">
+                    <div id="card-element" style="padding:1rem;border:1px solid #CBD5E1;border-radius:8px;margin-bottom:1.5rem"></div>
+                    <div id="card-errors" style="color:var(--danger);font-size:0.9rem;margin-bottom:1rem"></div>
+                    <button onclick="submitStripePayment()" class="btn btn-primary btn-lg" style="width:100%" id="stripe-pay-btn">
+                        Pay Now
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success Message -->
+        <div id="payment-success" style="display:none;text-align:center;padding:3rem">
+            <div style="width:80px;height:80px;border-radius:50%;background:rgba(34,197,94,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <h2 style="margin-bottom:0.75rem">Payment Successful!</h2>
+            <p style="color:var(--gray);margin-bottom:2rem">Your appointment has been confirmed. You will receive a confirmation email shortly.</p>
+            <div style="display:flex;gap:1rem;justify-content:center">
+                <a href="/portal" class="btn btn-primary">View My Appointments</a>
+                <a href="/" class="btn btn-outline">Back to Home</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="footer">
+    <div class="footer-bottom" style="border-top:none;padding-top:0">
+        <span>&copy; 2025 NP Healthcare Practice. All rights reserved.</span>
+        <span>HIPAA Compliant | Secure & Encrypted</span>
+    </div>
+</footer>
+
+<script src="/js/main.js"></script>
+<script>
+const params = new URLSearchParams(window.location.search);
+const appointmentId = params.get('appointment_id');
+const serviceType = params.get('service');
+
+const serviceNames = {
+    telehealth: 'Telehealth Consultation',
+    dot_physical: 'DOT Physical Exam',
+    consultation: 'General Consultation',
+    follow_up: 'Follow-Up Visit'
+};
+
+const prices = { telehealth: 15000, dot_physical: 12500, consultation: 10000, follow_up: 7500 };
+
+let paymentData = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+    if (!Auth.isLoggedIn()) {
+        window.location.href = '/portal';
+        return;
+    }
+
+    // Show order summary
+    const summary = document.getElementById('order-summary');
+    const price = prices[serviceType] || 0;
+    summary.innerHTML = `
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.75rem">
+            <span>${serviceNames[serviceType] || 'Service'}</span>
+            <strong>${formatCurrency(price)}</strong>
+        </div>
+        <div style="border-top:1px solid #E2E8F0;padding-top:0.75rem;display:flex;justify-content:space-between;font-size:1.1rem">
+            <strong>Total</strong>
+            <strong style="color:var(--primary)">${formatCurrency(price)}</strong>
+        </div>
+    `;
+
+    // Create payment intent
+    try {
+        paymentData = await api('/api/payments/create-intent', {
+            method: 'POST',
+            body: JSON.stringify({
+                appointment_id: appointmentId ? parseInt(appointmentId) : null,
+                service_type: serviceType
+            })
+        });
+
+        if (paymentData.demo_mode) {
+            document.getElementById('demo-payment').style.display = 'block';
+        } else {
+            document.getElementById('stripe-payment').style.display = 'block';
+            initStripe(paymentData.publishable_key, paymentData.client_secret);
+        }
+    } catch (err) {
+        showAlert(document.getElementById('checkout-alerts'), err.message, 'error');
+    }
+});
+
+let stripe, cardElement;
+
+function initStripe(publishableKey, clientSecret) {
+    stripe = Stripe(publishableKey);
+    const elements = stripe.elements();
+    cardElement = elements.create('card', {
+        style: {
+            base: {
+                fontSize: '16px',
+                color: '#1E293B',
+                fontFamily: 'Inter, sans-serif',
+                '::placeholder': { color: '#94A3B8' }
+            }
+        }
+    });
+    cardElement.mount('#card-element');
+
+    cardElement.on('change', (event) => {
+        const errors = document.getElementById('card-errors');
+        errors.textContent = event.error ? event.error.message : '';
+    });
+}
+
+async function submitStripePayment() {
+    const btn = document.getElementById('stripe-pay-btn');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+
+    const { error, paymentIntent } = await stripe.confirmCardPayment(paymentData.client_secret, {
+        payment_method: { card: cardElement }
+    });
+
+    if (error) {
+        document.getElementById('card-errors').textContent = error.message;
+        btn.disabled = false;
+        btn.textContent = 'Pay Now';
+    } else if (paymentIntent.status === 'succeeded') {
+        showSuccess();
+    }
+}
+
+async function confirmDemoPayment() {
+    const btn = document.getElementById('demo-pay-btn');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+
+    try {
+        await api('/api/payments/confirm-demo', {
+            method: 'POST',
+            body: JSON.stringify({ payment_id: paymentData.payment_id })
+        });
+        showSuccess();
+    } catch (err) {
+        showAlert(document.getElementById('checkout-alerts'), err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Complete Demo Payment';
+    }
+}
+
+function showSuccess() {
+    document.getElementById('payment-card').style.display = 'none';
+    document.querySelector('.card').style.display = 'none';
+    document.getElementById('payment-success').style.display = 'block';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telehealth Session | NP Healthcare Practice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body style="background:#0F172A">
+
+<div style="min-height:100vh;display:flex;flex-direction:column">
+    <!-- Top Bar -->
+    <div style="background:#1E293B;padding:0.75rem 2rem;display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;align-items:center;gap:0.75rem">
+            <svg viewBox="0 0 36 36" fill="none" width="28" height="28"><rect width="36" height="36" rx="8" fill="#0D6EFD"/><path d="M18 8v20M8 18h20" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+            <span style="color:#fff;font-weight:600">Telehealth Session</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem">
+            <div id="session-status" style="display:flex;align-items:center;gap:0.5rem">
+                <div style="width:8px;height:8px;border-radius:50%;background:#F59E0B" id="status-dot"></div>
+                <span style="color:#94A3B8;font-size:0.9rem" id="status-text">Connecting...</span>
+            </div>
+            <span id="session-timer" style="color:#fff;font-weight:600;font-family:monospace;font-size:1.1rem">00:00</span>
+        </div>
+    </div>
+
+    <!-- Video Area -->
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:1.5rem">
+        <!-- Waiting Room -->
+        <div id="waiting-room" style="text-align:center;color:#fff;max-width:500px">
+            <div style="width:100px;height:100px;border-radius:50%;background:#1E293B;display:flex;align-items:center;justify-content:center;margin:0 auto 2rem">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0D6EFD" stroke-width="1.5">
+                    <rect x="2" y="3" width="20" height="14" rx="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+            </div>
+            <h2 style="font-size:1.75rem;margin-bottom:0.75rem">Waiting Room</h2>
+            <p style="color:#94A3B8;margin-bottom:2rem;line-height:1.7">Your provider will be with you shortly. Please make sure your camera and microphone are enabled.</p>
+
+            <div id="session-info" style="background:#1E293B;border-radius:12px;padding:1.5rem;margin-bottom:2rem;text-align:left">
+                <div class="spinner" style="border-top-color:#0D6EFD"></div>
+            </div>
+
+            <div style="display:flex;gap:1rem;justify-content:center">
+                <button onclick="testCamera()" class="btn" style="background:#334155;color:#fff">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                    Test Camera
+                </button>
+                <button onclick="testMicrophone()" class="btn" style="background:#334155;color:#fff">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                    Test Microphone
+                </button>
+            </div>
+        </div>
+
+        <!-- Video Session -->
+        <div id="video-session" style="display:none;width:100%;max-width:1100px">
+            <div class="video-container">
+                <div class="video-box">
+                    <video id="remote-video" autoplay playsinline></video>
+                    <div class="video-label">Provider</div>
+                    <div id="remote-placeholder" style="color:#94A3B8;text-align:center">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <p>Provider</p>
+                    </div>
+                </div>
+                <div class="video-box">
+                    <video id="local-video" autoplay muted playsinline></video>
+                    <div class="video-label">You</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div style="background:#1E293B;padding:1rem">
+        <div class="video-controls">
+            <button class="video-btn video-btn-mute" id="btn-mute" onclick="toggleMute()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+            </button>
+            <button class="video-btn video-btn-camera" id="btn-camera" onclick="toggleCamera()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+            </button>
+            <button class="video-btn video-btn-end" onclick="endCall()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.11 2 2 0 0 1 4.11 2h3"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Camera Test Modal -->
+<div id="camera-modal" class="modal-backdrop">
+    <div class="modal" style="max-width:600px">
+        <div class="modal-header">
+            <h3>Camera Preview</h3>
+            <button class="modal-close" onclick="closeCameraTest()">&times;</button>
+        </div>
+        <video id="test-video" autoplay muted playsinline style="width:100%;border-radius:8px;background:#000"></video>
+        <p style="text-align:center;margin-top:1rem;color:var(--gray)">If you can see yourself, your camera is working.</p>
+    </div>
+</div>
+
+<script src="/js/main.js"></script>
+<script>
+let localStream = null;
+let isMuted = false;
+let isCameraOff = false;
+let timerInterval = null;
+let seconds = 0;
+
+const params = new URLSearchParams(window.location.search);
+const sessionToken = params.get('token');
+
+document.addEventListener('DOMContentLoaded', async () => {
+    if (!sessionToken) {
+        document.getElementById('session-info').innerHTML = '<p style="color:#EF4444">No session token provided. Please access this page from your appointment link.</p>';
+        return;
+    }
+
+    try {
+        const session = await api(`/api/telehealth/session/${sessionToken}`);
+        document.getElementById('session-info').innerHTML = `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                <div>
+                    <div style="font-size:0.8rem;color:#64748B;text-transform:uppercase;margin-bottom:0.25rem">Patient</div>
+                    <div style="color:#fff">${session.first_name} ${session.last_name}</div>
+                </div>
+                <div>
+                    <div style="font-size:0.8rem;color:#64748B;text-transform:uppercase;margin-bottom:0.25rem">Appointment</div>
+                    <div style="color:#fff">${formatDate(session.appointment_date)} at ${formatTime(session.appointment_time)}</div>
+                </div>
+                <div>
+                    <div style="font-size:0.8rem;color:#64748B;text-transform:uppercase;margin-bottom:0.25rem">Status</div>
+                    <div style="color:${session.status === 'active' ? '#22C55E' : '#F59E0B'}">${session.status === 'active' ? 'Session Active' : 'Waiting for Provider'}</div>
+                </div>
+                <div>
+                    <div style="font-size:0.8rem;color:#64748B;text-transform:uppercase;margin-bottom:0.25rem">Session ID</div>
+                    <div style="color:#fff;font-family:monospace;font-size:0.85rem">${sessionToken.substring(0, 8)}...</div>
+                </div>
+            </div>
+        `;
+
+        if (session.status === 'active') {
+            startVideoSession();
+        }
+
+        document.getElementById('status-dot').style.background = session.status === 'active' ? '#22C55E' : '#F59E0B';
+        document.getElementById('status-text').textContent = session.status === 'active' ? 'Connected' : 'Waiting';
+    } catch (err) {
+        document.getElementById('session-info').innerHTML = `<p style="color:#EF4444">${err.message}</p>`;
+    }
+});
+
+async function testCamera() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        const modal = document.getElementById('camera-modal');
+        const video = document.getElementById('test-video');
+        video.srcObject = stream;
+        modal.classList.add('active');
+    } catch (err) {
+        alert('Unable to access camera. Please check your browser permissions.');
+    }
+}
+
+function closeCameraTest() {
+    const modal = document.getElementById('camera-modal');
+    const video = document.getElementById('test-video');
+    if (video.srcObject) {
+        video.srcObject.getTracks().forEach(t => t.stop());
+        video.srcObject = null;
+    }
+    modal.classList.remove('active');
+}
+
+async function testMicrophone() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioContext = new AudioContext();
+        const analyser = audioContext.createAnalyser();
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+
+        alert('Microphone is working! Speak and check your volume levels.');
+
+        setTimeout(() => {
+            stream.getTracks().forEach(t => t.stop());
+            audioContext.close();
+        }, 5000);
+    } catch (err) {
+        alert('Unable to access microphone. Please check your browser permissions.');
+    }
+}
+
+async function startVideoSession() {
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('local-video').srcObject = localStream;
+
+        document.getElementById('waiting-room').style.display = 'none';
+        document.getElementById('video-session').style.display = 'block';
+
+        document.getElementById('status-dot').style.background = '#22C55E';
+        document.getElementById('status-text').textContent = 'Connected';
+
+        startTimer();
+    } catch (err) {
+        console.error('Failed to start video:', err);
+        alert('Unable to access camera/microphone. Please grant permissions and try again.');
+    }
+}
+
+function toggleMute() {
+    isMuted = !isMuted;
+    if (localStream) {
+        localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+    }
+    const btn = document.getElementById('btn-mute');
+    btn.style.background = isMuted ? '#EF4444' : '#334155';
+}
+
+function toggleCamera() {
+    isCameraOff = !isCameraOff;
+    if (localStream) {
+        localStream.getVideoTracks().forEach(t => t.enabled = !isCameraOff);
+    }
+    const btn = document.getElementById('btn-camera');
+    btn.style.background = isCameraOff ? '#EF4444' : '#334155';
+}
+
+function endCall() {
+    if (confirm('Are you sure you want to end this session?')) {
+        if (localStream) {
+            localStream.getTracks().forEach(t => t.stop());
+        }
+        if (timerInterval) clearInterval(timerInterval);
+        window.location.href = '/portal';
+    }
+}
+
+function startTimer() {
+    timerInterval = setInterval(() => {
+        seconds++;
+        const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const secs = (seconds % 60).toString().padStart(2, '0');
+        document.getElementById('session-timer').textContent = `${mins}:${secs}`;
+    }, 1000);
+}
+</script>
+</body>
+</html>

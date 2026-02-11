@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Appointment | NP Healthcare Practice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="/" class="nav-brand">
+        <svg viewBox="0 0 36 36" fill="none"><rect width="36" height="36" rx="8" fill="#0D6EFD"/><path d="M18 8v20M8 18h20" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+        NP Healthcare
+    </a>
+    <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/services">Services</a></li>
+        <li><a href="/telehealth">Telehealth</a></li>
+        <li><a href="/dot-physicals">DOT Physicals</a></li>
+        <li><a href="/contact">Contact</a></li>
+    </ul>
+    <div class="nav-actions">
+        <a href="/portal" class="btn btn-outline btn-sm">Patient Login</a>
+        <a href="/book" class="btn btn-primary btn-sm">Book Now</a>
+    </div>
+    <button class="mobile-menu-btn" onclick="document.querySelector('.nav-links').classList.toggle('open')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+</nav>
+
+<div class="page-wrapper">
+    <div class="page-header">
+        <h1>Book an Appointment</h1>
+        <p>Select your service, choose a date and time, and complete your booking</p>
+    </div>
+
+    <div class="page-content" style="max-width:800px">
+        <div id="booking-alerts"></div>
+
+        <!-- Login prompt for non-logged-in users -->
+        <div id="login-prompt" class="card" style="margin-bottom:2rem;display:none">
+            <div class="card-body" style="text-align:center;padding:2rem">
+                <h3 style="margin-bottom:0.75rem">Sign In to Book</h3>
+                <p style="color:var(--gray);margin-bottom:1.5rem">You need to be signed in to book an appointment. Already have an account?</p>
+                <div style="display:flex;gap:1rem;justify-content:center">
+                    <a href="/portal" class="btn btn-primary">Sign In</a>
+                    <a href="/portal#register" class="btn btn-outline">Create Account</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Booking Steps -->
+        <div id="booking-form">
+            <!-- Step 1: Service Selection -->
+            <div class="card" style="margin-bottom:1.5rem">
+                <div class="card-header">Step 1: Select Service</div>
+                <div class="card-body">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                        <label class="service-option" style="display:flex;align-items:center;gap:0.75rem;padding:1rem;border:2px solid #E2E8F0;border-radius:10px;cursor:pointer;transition:all 0.2s">
+                            <input type="radio" name="service" value="telehealth" style="width:18px;height:18px">
+                            <div>
+                                <strong>Telehealth Visit</strong>
+                                <div style="font-size:0.85rem;color:var(--gray)">30 min - $150</div>
+                            </div>
+                        </label>
+                        <label class="service-option" style="display:flex;align-items:center;gap:0.75rem;padding:1rem;border:2px solid #E2E8F0;border-radius:10px;cursor:pointer;transition:all 0.2s">
+                            <input type="radio" name="service" value="dot_physical" style="width:18px;height:18px">
+                            <div>
+                                <strong>DOT Physical</strong>
+                                <div style="font-size:0.85rem;color:var(--gray)">60 min - $125</div>
+                            </div>
+                        </label>
+                        <label class="service-option" style="display:flex;align-items:center;gap:0.75rem;padding:1rem;border:2px solid #E2E8F0;border-radius:10px;cursor:pointer;transition:all 0.2s">
+                            <input type="radio" name="service" value="consultation" style="width:18px;height:18px">
+                            <div>
+                                <strong>Consultation</strong>
+                                <div style="font-size:0.85rem;color:var(--gray)">30 min - $100</div>
+                            </div>
+                        </label>
+                        <label class="service-option" style="display:flex;align-items:center;gap:0.75rem;padding:1rem;border:2px solid #E2E8F0;border-radius:10px;cursor:pointer;transition:all 0.2s">
+                            <input type="radio" name="service" value="follow_up" style="width:18px;height:18px">
+                            <div>
+                                <strong>Follow-Up</strong>
+                                <div style="font-size:0.85rem;color:var(--gray)">30 min - $75</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Date Selection -->
+            <div class="card" style="margin-bottom:1.5rem">
+                <div class="card-header">
+                    Step 2: Select Date
+                    <div style="display:flex;gap:0.5rem;align-items:center">
+                        <button onclick="changeMonth(-1)" class="btn btn-sm btn-outline" style="padding:0.25rem 0.5rem">&larr;</button>
+                        <span id="calendar-month" style="font-weight:600;min-width:150px;text-align:center"></span>
+                        <button onclick="changeMonth(1)" class="btn btn-sm btn-outline" style="padding:0.25rem 0.5rem">&rarr;</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="calendar" id="calendar"></div>
+                </div>
+            </div>
+
+            <!-- Step 3: Time Selection -->
+            <div class="card" style="margin-bottom:1.5rem" id="time-section">
+                <div class="card-header">Step 3: Select Time</div>
+                <div class="card-body">
+                    <div id="time-slots-container">
+                        <p style="color:var(--gray);text-align:center">Please select a date first</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Notes -->
+            <div class="card" style="margin-bottom:1.5rem">
+                <div class="card-header">Step 4: Additional Information (Optional)</div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="notes">Reason for visit or notes for the provider</label>
+                        <textarea id="notes" class="form-control" placeholder="Briefly describe your symptoms or reason for the visit..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Booking Summary & Submit -->
+            <div class="card" id="booking-summary" style="display:none">
+                <div class="card-header">Booking Summary</div>
+                <div class="card-body">
+                    <div id="summary-content" style="margin-bottom:1.5rem"></div>
+                    <button onclick="submitBooking()" class="btn btn-primary btn-lg" style="width:100%" id="book-btn">
+                        Confirm & Proceed to Payment
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="footer">
+    <div class="footer-bottom" style="border-top:none;padding-top:0">
+        <span>&copy; 2025 NP Healthcare Practice. All rights reserved.</span>
+        <span>HIPAA Compliant | Secure & Encrypted</span>
+    </div>
+</footer>
+
+<script src="/js/main.js"></script>
+<script>
+let selectedDate = null;
+let selectedTime = null;
+let selectedService = null;
+let currentMonth = new Date();
+
+// Check login status
+document.addEventListener('DOMContentLoaded', () => {
+    if (!Auth.isLoggedIn()) {
+        document.getElementById('login-prompt').style.display = 'block';
+    }
+
+    // Pre-select service from URL params
+    const params = new URLSearchParams(window.location.search);
+    const service = params.get('service');
+    if (service) {
+        const radio = document.querySelector(`input[name="service"][value="${service}"]`);
+        if (radio) {
+            radio.checked = true;
+            selectedService = service;
+            highlightService(radio);
+        }
+    }
+
+    // Service selection handlers
+    document.querySelectorAll('input[name="service"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            selectedService = e.target.value;
+            highlightService(e.target);
+            updateSummary();
+        });
+    });
+
+    renderCalendar();
+});
+
+function highlightService(radio) {
+    document.querySelectorAll('.service-option').forEach(opt => {
+        opt.style.borderColor = '#E2E8F0';
+        opt.style.background = 'transparent';
+    });
+    radio.closest('.service-option').style.borderColor = 'var(--primary)';
+    radio.closest('.service-option').style.background = 'rgba(13,110,253,0.05)';
+}
+
+function renderCalendar() {
+    const calendar = document.getElementById('calendar');
+    const monthLabel = document.getElementById('calendar-month');
+
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+
+    monthLabel.textContent = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let html = '';
+    ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(d => {
+        html += `<div class="calendar-header">${d}</div>`;
+    });
+
+    for (let i = 0; i < firstDay; i++) {
+        html += '<div class="calendar-day disabled"></div>';
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isPast = date < today;
+        const isToday = date.getTime() === today.getTime();
+        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+        const isSelected = selectedDate === dateStr;
+
+        let classes = 'calendar-day';
+        if (isPast || isWeekend) classes += ' disabled';
+        if (isToday) classes += ' today';
+        if (isSelected) classes += ' selected';
+
+        const onclick = (!isPast && !isWeekend) ? `onclick="selectDate('${dateStr}')"` : '';
+        html += `<button class="${classes}" ${onclick}>${day}</button>`;
+    }
+
+    calendar.innerHTML = html;
+}
+
+function changeMonth(delta) {
+    currentMonth.setMonth(currentMonth.getMonth() + delta);
+    renderCalendar();
+}
+
+async function selectDate(dateStr) {
+    selectedDate = dateStr;
+    selectedTime = null;
+    renderCalendar();
+
+    const container = document.getElementById('time-slots-container');
+    container.innerHTML = '<div class="spinner"></div>';
+
+    try {
+        const serviceParam = selectedService ? `&service_type=${selectedService}` : '';
+        const data = await api(`/api/appointments/availability?date=${dateStr}${serviceParam}`);
+
+        if (data.available_slots.length === 0) {
+            container.innerHTML = '<p style="color:var(--gray);text-align:center">No available slots for this date. Please try another date.</p>';
+            return;
+        }
+
+        let html = '<div class="time-slots">';
+        data.available_slots.forEach(time => {
+            html += `<button class="time-slot" onclick="selectTime('${time}', this)">${formatTime(time)}</button>`;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    } catch (err) {
+        container.innerHTML = `<p style="color:var(--danger);text-align:center">${err.message}</p>`;
+    }
+}
+
+function selectTime(time, el) {
+    selectedTime = time;
+    document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+    el.classList.add('selected');
+    updateSummary();
+}
+
+function updateSummary() {
+    const summary = document.getElementById('booking-summary');
+    const content = document.getElementById('summary-content');
+
+    if (selectedService && selectedDate && selectedTime) {
+        const serviceNames = {
+            telehealth: 'Telehealth Consultation',
+            dot_physical: 'DOT Physical Exam',
+            consultation: 'General Consultation',
+            follow_up: 'Follow-Up Visit'
+        };
+        const prices = { telehealth: '$150', dot_physical: '$125', consultation: '$100', follow_up: '$75' };
+
+        content.innerHTML = `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                <div><strong style="color:var(--gray);font-size:0.85rem">SERVICE</strong><br>${serviceNames[selectedService]}</div>
+                <div><strong style="color:var(--gray);font-size:0.85rem">PRICE</strong><br>${prices[selectedService]}</div>
+                <div><strong style="color:var(--gray);font-size:0.85rem">DATE</strong><br>${formatDate(selectedDate)}</div>
+                <div><strong style="color:var(--gray);font-size:0.85rem">TIME</strong><br>${formatTime(selectedTime)}</div>
+            </div>
+        `;
+        summary.style.display = 'block';
+    } else {
+        summary.style.display = 'none';
+    }
+}
+
+async function submitBooking() {
+    if (!Auth.isLoggedIn()) {
+        showAlert(document.getElementById('booking-alerts'), 'Please sign in to book an appointment', 'error');
+        return;
+    }
+
+    if (!selectedService || !selectedDate || !selectedTime) {
+        showAlert(document.getElementById('booking-alerts'), 'Please complete all booking steps', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('book-btn');
+    btn.disabled = true;
+    btn.textContent = 'Booking...';
+
+    try {
+        const data = await api('/api/appointments', {
+            method: 'POST',
+            body: JSON.stringify({
+                service_type: selectedService,
+                appointment_date: selectedDate,
+                appointment_time: selectedTime,
+                notes: document.getElementById('notes').value
+            })
+        });
+
+        // Redirect to checkout
+        window.location.href = `/checkout?appointment_id=${data.appointment.id}&service=${selectedService}`;
+    } catch (err) {
+        showAlert(document.getElementById('booking-alerts'), err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Confirm & Proceed to Payment';
+    }
+}
+</script>
+</body>
+</html>
