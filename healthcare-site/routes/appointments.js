@@ -37,8 +37,8 @@ router.get('/availability', (req, res) => {
 
         const bookedTimes = new Set(existingAppts.map(a => a.appointment_time));
 
-        // Generate 30-min time slots
-        const availableSlots = [];
+        // Generate 30-min time slots (deduplicated across service types)
+        const slotSet = new Set();
         slots.forEach(slot => {
             const [startH, startM] = slot.start_time.split(':').map(Number);
             const [endH, endM] = slot.end_time.split(':').map(Number);
@@ -51,10 +51,12 @@ router.get('/availability', (req, res) => {
                 const timeStr = `${hour}:${min}`;
 
                 if (!bookedTimes.has(timeStr)) {
-                    availableSlots.push(timeStr);
+                    slotSet.add(timeStr);
                 }
             }
         });
+
+        const availableSlots = Array.from(slotSet).sort();
 
         res.json({ date, available_slots: availableSlots });
     } catch (err) {
